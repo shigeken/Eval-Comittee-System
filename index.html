@@ -241,12 +241,14 @@ function loadKey() {
     }
   } catch(e) {}
 }
-window.onload = loadKey; // 読み込み時にキーを復元する処理を追加
+window.onload = loadKey;
 
+// 保存されたキーを完全に削除する
 function clearKey() {
   try { localStorage.removeItem('ai_radio_key'); } catch(e) {}
   document.getElementById('keySavedBanner').style.display = 'none';
   document.getElementById('keyInputArea').style.display = 'block';
+  document.getElementById('apiKey').value = '';
 }
 
 function getApiKey() {
@@ -328,7 +330,7 @@ async function callAPI(prompt, maxTokens) {
       'anthropic-dangerous-direct-browser-access': 'true'
     },
     body: JSON.stringify({
-      model: 'claude-3-5-sonnet-latest', // 現在利用可能な最新のSonnetモデルに修正
+      model: 'claude-3-5-sonnet-latest',
       max_tokens: maxTokens,
       messages: [{ role: 'user', content: prompt }]
     })
@@ -342,39 +344,62 @@ async function callAPI(prompt, maxTokens) {
 }
 
 async function fetchScript(theme, djKeys) {
-  // 選ばれた2人のDJの情報を取得
   const djA = DJS[djKeys[0]];
   const djB = DJS[djKeys[1]];
 
   const text = await callAPI(
-    `あなたはラジオ番組の台本作家です。2人のDJが会話するラジオ番組の台本を作ってください。
+    `あなたはラジオ番組の台本作家です。指定された2人のDJが会話するラジオ番組の台本を作ってください。
 
-DJ A「${djA.name}」: ${djA.desc}
-DJ B「${djB.name}」: ${djB.desc}
+【登場人物】
+DJ A：「${djA.name}」（性格・特徴：${djA.desc}）
+DJ B：「${djB.name}」（性格・特徴：${djB.desc}）
 
-テーマ：${theme}
+【トークテーマ】
+${theme}
 
-【ルール】
-- 全部で40〜50回のやり取り（約15分分）
-- 各セリフは1〜3文
-- 挨拶から始まり、テーマを深掘りしながら自然に盛り上がり、最後に締める
+【執筆ルール】
+- 全部で30〜40回のやり取りを作ってください。
+- 各セリフの先頭には、必ず半角大文字で「A:」または「B:」のみを付けてください。（例：「A:皆さんこんにちは！」「B:よろしくおねがいします」）
+- キャラクター名（「ハル:」「${djA.name}:」など）は絶対に行頭に使わないでください。必ず「A:」「B:」に統一すること。
+- お互いのことは実際の名前（${djA.name}、${djB.name}）で呼び合わさせてください。
+- 挨拶から始まり、テーマを深掘りしながら自然に盛り上がり、最後に締める構成にしてください。
 
-【出力形式】この形式のみ：
+【出力形式】
 A:セリフ
 B:セリフ
 A:セリフ
-...
 
-余計な説明不要。`,
+これ以外の余計な挨拶や解説文は一切出力しないでください。`,
     4096
   );
 
   const lines = [];
   text.split('\n').forEach(line => {
     const t = line.trim();
-    if (t.startsWith('A:')) lines.push({ dj: djKeys[0], text: t.slice(2).trim() });
-    else if (t.startsWith('B:')) lines.push({ dj: djKeys[1], text: t.slice(2).trim() });
+    if (t.startsWith('A:')) {
+      lines.push({ dj: djKeys[0], text: t.replace(/^A:\s*/, '') });
+    } else if (t.startsWith('B:')) {
+      lines.push({ dj: djKeys[1], text: t.replace(/^B:\s*/, '') });
+    }
   });
+
+  // 万が一、AIがルールを破って名前で出力してきた場合のフォールバック（保険）処理
+  if (lines.length === 0) {
+    text.split('\n').forEach(line => {
+      const t = line.trim();
+      if (t.startsWith(djA.name + ':') || t.startsWith(djA.name + '：')) {
+        lines.push({ dj: djKeys[0], text: t.substring(djA.name.length + 1).trim() });
+      } else if (t.startsWith(djB.name + ':') || t.startsWith(djB.name + '：')) {
+        lines.push({ dj: djKeys[1], text: t.substring(djB.name.length + 1).trim() });
+      }
+    });
+  }
+
+  // それでもダメならエラーを出してループのクラッシュを防ぐ
+  if (lines.length === 0) {
+    throw new Error('台本の解析に失敗しました。もう一度お試しください。');
+  }
+
   return { theme, lines, djKeys };
 }
 
@@ -396,7 +421,13 @@ function speak(text, djKey) {
     u.lang = 'ja-JP';
     u.pitch = dj.pitch;
     u.rate = dj.rate;
-    if (voices.length > 0) u.voice = voices[0];
+    if (voices.length > 0) {
+      // 簡易的にDJごとに別の声が選べるなら割り振る（環境依存対策）
+      if (djKey === 'b' && voices.length > 1) u.voice = voices[1];
+      else if (djKey === 'c' && voices.length > 2) u.voice = voices[2];
+      else if (djKey === 'd' && voices.length > 3) u.voice = voices[3];
+      else u.voice = voices[0];
+    }
     u.onend = resolve;
     u.onerror = resolve;
     synth.speak(u);
@@ -436,9 +467,12 @@ function setMode(mode, theme, djKeys) {
 function renderChat(lines) {
   const log = document.getElementById('chatLog');
   log.innerHTML = '';
+  if (!lines || lines.length === 0) return;
+  
+  const firstDjKey = lines[0].dj;
   lines.forEach((line, i) => {
     const dj = DJS[line.dj];
-    const side = line.dj === lines[0].dj ? 'left' : 'right'; // トークを開始したDJを左、相手を右に整列
+    const side = line.dj === firstDjKey ? 'left' : 'right';
     const div = document.createElement('div');
     div.className = `chat-bubble ${side}`;
     div.innerHTML = `
@@ -459,15 +493,14 @@ function highlight(idx) {
 
 // ===== メインループ =====
 async function radioLoop() {
-  // 未定義のTHEMESを使う不要な1行を削除
   setMode('loading', '', null);
   setStatus('最初の台本を生成中（10〜20秒かかります）...', false);
 
   let current;
   try {
     const firstTheme = await fetchTheme();
-    const firstDJs = pickDJs();
-    current = await fetchScript(firstTheme, firstDJs); // 2人のDJ情報を正しく渡す
+    const firstDJs = pickDJs(); // ここで完全にランダム選出
+    current = await fetchScript(firstTheme, firstDJs);
   } catch(e) {
     setStatus('エラー: ' + e.message, true);
     stopRadio();
@@ -475,28 +508,25 @@ async function radioLoop() {
   }
 
   while (isRunning) {
-    // トークパート開始
+    setStatus('オンエア中！', false);
     setMode('talk', current.theme, current.djKeys);
     renderChat(current.lines);
     startBGM();
 
-    // 台本読み上げと並行してCM・次台本を取得
+    // 次のCMと台本をバックグラウンドで並行取得
     const cmPromise = fetchCM().catch(() => '提供：AIラジオスタジオ。いつもご愛聴ありがとうございます。');
     const nextPromise = (async () => {
       const nextTheme = await fetchTheme();
-      const nextDJs = pickDJs();
+      const nextDJs = pickDJs(); // 次のコンビもランダム選出
       return fetchScript(nextTheme, nextDJs);
-    })().catch(async () => {
-      await wait(3000);
-      const t = await fetchTheme();
-      return fetchScript(t, pickDJs());
-    });
+    })();
 
+    // 読み上げループ
     for (let i = 0; i < current.lines.length; i++) {
       if (!isRunning) return;
       highlight(i);
       await speak(current.lines[i].text, current.lines[i].dj);
-      await wait(180);
+      await wait(200);
     }
 
     if (!isRunning) return;
@@ -509,56 +539,8 @@ async function radioLoop() {
     try { cmText = await cmPromise; } catch(e) { cmText = 'AIラジオをお聴きいただきありがとうございます。'; }
     document.getElementById('cmBox').textContent = cmText;
 
-    await speak('それではCMです。', current.lines[0].dj); // 喋っているDJに合わせて声を変える
-    await wait(150);
+    await speak('それでは一度、CMです。', current.lines[current.lines.length - 1].dj);
+    await wait(200);
     await speak(cmText, null);
-    await wait(300);
-    // 2人目のDJがいればその人の声で、いなければデフォルトで戻る発言
-    const secondDj = current.djKeys ? current.djKeys[1] : null;
-    await speak('以上CMでした。放送に戻ります！', secondDj);
-    await wait(300);
-
-    if (!isRunning) return;
-
-    // 次の台本を待つ
-    setMode('loading', '', null);
-    setStatus('次の台本を準備中...', false);
-    try { current = await nextPromise; } catch(e) {
-      setStatus('エラー: ' + e.message, true);
-      stopRadio(); return;
-    }
-  }
-}
-
-// ===== 開始・終了 =====
-async function startRadio() {
-  const apiKey = getApiKey();
-  if (!apiKey) { setStatus('APIキーを入力してください', true); return; }
-
-  try {
-    if (document.getElementById('saveKey')?.checked) {
-      localStorage.setItem('ai_radio_key', apiKey);
-      document.getElementById('keySavedBanner').style.display = 'flex';
-      document.getElementById('keyInputArea').style.display = 'none';
-    }
-  } catch(e) {}
-
-  isRunning = true;
-  document.getElementById('startBtn').disabled = true;
-  document.getElementById('nowPlaying').classList.add('visible');
-
-  await radioLoop();
-}
-
-function stopRadio() {
-  isRunning = false;
-  synth.cancel();
-  stopBGM();
-  document.getElementById('startBtn').disabled = false;
-  document.getElementById('nowPlaying').classList.remove('visible');
-  setStatus('放送を終了しました。', false);
-}
-</script>
-
-</body>
-</html>
+    await wait(400);
+    await speak('お送りした内容はCMでし
