@@ -9,6 +9,7 @@
   :root {
     --bg:#0a0a0f;--surface:#13131a;--border:#2a2a3a;
     --accent:#ff4d6d;--accent2:#7b61ff;--text:#e8e8f0;--muted:#666680;
+    --gold:#ffd700;
   }
   *{box-sizing:border-box;margin:0;padding:0}
   body{background:var(--bg);color:var(--text);font-family:'Zen Kaku Gothic New',sans-serif;
@@ -23,11 +24,13 @@
     padding:24px 20px;width:100%;max-width:480px;margin-bottom:16px}
   .section-label{font-family:'Share Tech Mono',monospace;font-size:10px;letter-spacing:3px;
     color:var(--muted);text-transform:uppercase;margin-bottom:8px}
-  input{width:100%;background:var(--bg);border:1px solid var(--border);border-radius:10px;
-    color:var(--text);font-family:'Zen Kaku Gothic New',sans-serif;font-size:14px;
+  input[type="password"],input[type="text"],textarea{width:100%;background:var(--bg);
+    border:1px solid var(--border);border-radius:10px;color:var(--text);
+    font-family:'Zen Kaku Gothic New',sans-serif;font-size:14px;
     padding:12px 14px;outline:none;transition:border-color .2s;-webkit-appearance:none}
-  input:focus{border-color:var(--accent2)}
+  input[type="password"]:focus,input[type="text"]:focus,textarea:focus{border-color:var(--accent2)}
   input[type="password"]{font-family:'Share Tech Mono',monospace;letter-spacing:2px}
+  textarea{resize:none;height:80px;line-height:1.6}
   .key-saved{display:flex;align-items:center;justify-content:space-between;
     background:rgba(123,97,255,.1);border:1px solid rgba(123,97,255,.3);
     border-radius:10px;padding:10px 14px;font-size:13px;color:var(--accent2)}
@@ -50,7 +53,7 @@
   .now-playing.visible{display:block}
   .waveform{display:flex;align-items:center;gap:3px;height:32px;margin-bottom:16px}
   .bar{width:3px;border-radius:2px;animation:wave 1s ease-in-out infinite;opacity:.3}
-  .bar.talk{background:var(--accent)}.bar.cm{background:#ffd700}.bar.active{opacity:1}
+  .bar.talk{background:var(--accent)}.bar.cm{background:var(--gold)}.bar.active{opacity:1}
   @keyframes wave{0%,100%{height:4px}50%{height:24px}}
   .bar:nth-child(1){animation-delay:0s}.bar:nth-child(2){animation-delay:.1s}
   .bar:nth-child(3){animation-delay:.2s}.bar:nth-child(4){animation-delay:.3s}
@@ -60,26 +63,29 @@
   .mode-badge{display:inline-block;border-radius:20px;font-size:12px;font-weight:700;
     padding:4px 12px;margin-bottom:12px;letter-spacing:1px}
   .mode-talk{background:rgba(255,77,109,.2);color:var(--accent)}
-  .mode-cm{background:rgba(255,215,0,.2);color:#ffd700}
+  .mode-cm{background:rgba(255,215,0,.2);color:var(--gold)}
   .mode-loading{background:rgba(123,97,255,.2);color:var(--accent2)}
   .current-theme{font-size:15px;font-weight:700;margin-bottom:16px;color:var(--text)}
-  .chat-log{display:flex;flex-direction:column;gap:10px;margin-bottom:16px;max-height:350px;overflow-y:auto}
-  .chat-bubble{display:flex;gap:10px;align-items:flex-start}
-  .chat-bubble.right{flex-direction:row-reverse}
-  .bubble-avatar{font-size:22px;flex-shrink:0;width:32px;text-align:center}
-  .bubble-content{max-width:82%}
-  .bubble-name{font-size:11px;font-weight:700;margin-bottom:3px}
-  .chat-bubble.left .bubble-name{color:var(--accent)}
-  .chat-bubble.right .bubble-name{color:var(--accent2);text-align:right}
-  .bubble-text{background:var(--bg);border-radius:12px;font-size:14px;
-    line-height:1.7;padding:10px 13px;border:1px solid var(--border)}
-  .chat-bubble.left .bubble-text{border-color:rgba(255,77,109,.3);border-top-left-radius:3px}
-  .chat-bubble.right .bubble-text{border-color:rgba(123,97,255,.3);border-top-right-radius:3px}
-  .bubble-text.speaking{background:rgba(255,255,255,.06)}
   .cm-box{background:rgba(255,215,0,.07);border:1px solid rgba(255,215,0,.3);
     border-radius:12px;padding:14px;font-size:14px;line-height:1.7;
     margin-bottom:16px;display:none;color:#ffe566}
   .cm-box.visible{display:block}
+
+  /* お便りエリア */
+  .letter-box{background:rgba(123,97,255,.07);border:1px solid rgba(123,97,255,.3);
+    border-radius:14px;padding:16px;margin-bottom:16px;display:none}
+  .letter-box.visible{display:block}
+  .letter-title{font-size:12px;font-weight:700;color:var(--accent2);margin-bottom:10px;
+    font-family:'Share Tech Mono',monospace;letter-spacing:2px}
+  .next-theme-label{font-size:14px;font-weight:700;color:var(--text);margin-bottom:12px;
+    padding:10px 12px;background:rgba(123,97,255,.1);border-radius:8px}
+  .letter-sent{text-align:center;color:var(--accent2);font-size:13px;padding:8px 0;display:none}
+  .btn-send{width:100%;border:none;border-radius:10px;color:#fff;cursor:pointer;
+    font-family:'Zen Kaku Gothic New',sans-serif;font-size:14px;font-weight:700;
+    padding:12px;margin-top:8px;transition:all .2s;background:var(--accent2)}
+  .btn-send:hover:not(:disabled){opacity:.85}
+  .btn-send:disabled{opacity:.4;cursor:not-allowed}
+
   .bgm-indicator{display:flex;align-items:center;gap:8px;
     font-family:'Share Tech Mono',monospace;font-size:11px;color:var(--muted);margin-top:12px}
   .bgm-dot{width:6px;height:6px;border-radius:50%;background:var(--accent2);animation:pulse 1.5s ease-in-out infinite}
@@ -125,8 +131,17 @@
   </div>
   <div class="mode-badge mode-loading" id="modeBadge">⏳ 準備中</div>
   <div class="current-theme" id="currentTheme"></div>
-  <div class="chat-log" id="chatLog"></div>
   <div class="cm-box" id="cmBox"></div>
+
+  <!-- お便りエリア -->
+  <div class="letter-box" id="letterBox">
+    <div class="letter-title">📬 次のテーマへのお便り</div>
+    <div class="next-theme-label" id="nextThemeLabel"></div>
+    <textarea id="letterInput" placeholder="このテーマについて一言どうぞ..."></textarea>
+    <button class="btn-send" id="sendBtn" onclick="sendLetter()">送信する</button>
+    <div class="letter-sent" id="letterSent">✅ お便りを受け付けました！次の放送でDJが読みます</div>
+  </div>
+
   <div class="bgm-indicator">
     <div class="bgm-dot" id="bgmDot"></div>
     <span id="bgmLabel">BGM 再生中</span>
@@ -155,6 +170,8 @@ const BGM_PATTERNS = [
 // ===== 状態 =====
 let isRunning = false;
 let usedThemes = [];
+let pendingLetter = null; // 送信されたお便り
+let nextTheme = null;     // 決定済みの次テーマ
 let audioCtx = null;
 let bgmTimer = null;
 let bgmOn = false;
@@ -162,14 +179,14 @@ let lastBgmIdx = -1;
 let synth = window.speechSynthesis;
 let voices = [];
 
-// ===== 音声読み込み =====
+// ===== 音声 =====
 function loadVoices() {
   voices = synth.getVoices().filter(v => v.lang.startsWith('ja'));
 }
 loadVoices();
 if (synth.onvoiceschanged !== undefined) synth.onvoiceschanged = loadVoices;
 
-// ===== APIキー管理 =====
+// ===== APIキー =====
 function loadKey() {
   try {
     if (localStorage.getItem('ai_radio_key')) {
@@ -178,13 +195,11 @@ function loadKey() {
     }
   } catch(e) {}
 }
-
 function clearKey() {
   try { localStorage.removeItem('ai_radio_key'); } catch(e) {}
   document.getElementById('keySavedBanner').style.display = 'none';
   document.getElementById('keyInputArea').style.display = 'block';
 }
-
 function getApiKey() {
   try { const s = localStorage.getItem('ai_radio_key'); if (s) return s; } catch(e) {}
   return document.getElementById('apiKey').value.trim();
@@ -206,8 +221,7 @@ function bgmTick(pattern) {
     try {
       const osc = audioCtx.createOscillator();
       const gain = audioCtx.createGain();
-      osc.connect(gain);
-      gain.connect(audioCtx.destination);
+      osc.connect(gain); gain.connect(audioCtx.destination);
       const note = pattern.notes[Math.floor(Math.random() * pattern.notes.length)];
       osc.frequency.value = note * (Math.random() > 0.5 ? 1 : 0.5);
       osc.type = pattern.type;
@@ -217,7 +231,6 @@ function bgmTick(pattern) {
       gain.gain.linearRampToValueAtTime(pattern.vol, s + 0.3);
       gain.gain.linearRampToValueAtTime(0, s + d);
       osc.start(s);
-      // 終了後に自動でGCされるようonendedで参照を手放す
       osc.onended = () => osc.disconnect();
       osc.stop(s + d);
     } catch(e) {}
@@ -229,16 +242,13 @@ function startBGM() {
   if (bgmOn) return;
   try {
     if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-    bgmOn = true;
-    setBgmUI(true);
-    bgmTick(pickBgm());
+    bgmOn = true; setBgmUI(true); bgmTick(pickBgm());
   } catch(e) {}
 }
 
 function stopBGM() {
   bgmOn = false;
-  clearTimeout(bgmTimer);
-  bgmTimer = null;
+  clearTimeout(bgmTimer); bgmTimer = null;
   setBgmUI(false);
 }
 
@@ -247,7 +257,7 @@ function setBgmUI(on) {
   document.getElementById('bgmLabel').textContent = on ? 'BGM 再生中' : 'BGM 停止中';
 }
 
-// ===== API呼び出し =====
+// ===== API =====
 async function callAPI(prompt, maxTokens) {
   const res = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
@@ -282,15 +292,18 @@ async function fetchTheme() {
   return theme;
 }
 
-async function fetchScript(theme, keyA, keyB) {
+async function fetchScript(theme, keyA, keyB, letter) {
   const djA = DJS[keyA], djB = DJS[keyB];
+  const letterSection = letter
+    ? `\n\n【リスナーからのお便り】\nテーマ「${theme}」について以下のお便りが届いています。トークの途中で自然な流れで読み上げて返答してください。\n「${letter}」`
+    : '';
   const raw = await callAPI(
     `あなたはラジオ番組の台本作家です。
 
 DJ A「${djA.name}」: ${djA.desc}
 DJ B「${djB.name}」: ${djB.desc}
 
-テーマ：${theme}
+テーマ：${theme}${letterSection}
 
 【ルール】
 - 40〜50回のやり取り（約15分分）
@@ -298,7 +311,7 @@ DJ B「${djB.name}」: ${djB.desc}
 - 挨拶→テーマを深掘り→締めの流れ
 - キャラクターを活かした自然な会話
 - 漢字はすべてひらがなに変換して出力する
-- 笑・！・？・（笑）・www などの記号や表現は一切使わない
+- 笑・！・？・（笑）などの記号や表現は一切使わない
 - 読み上げたときに自然に聞こえる文章にする
 
 【出力形式のみ】
@@ -315,12 +328,13 @@ B:セリフ
   return { theme, lines, keyA, keyB };
 }
 
-async function fetchCM() {
+async function fetchCM(isOpening) {
   const types = ['食品','アプリ','旅行','健康食品','家電','カフェ','スポーツジム','美容'];
   const type = types[Math.floor(Math.random() * types.length)];
-  return await callAPI(
-    `架空の${type}のラジオCMを日本語で。商品名は架空。ナレーター1人・約15秒（60文字）。CM文のみ出力。`, 200
-  );
+  const prompt = isOpening
+    ? `架空の${type}のオープニングラジオCMを日本語で。商品名は架空。ナレーター1人・約20秒（80文字）。CM文のみ出力。`
+    : `架空の${type}のラジオCMを日本語で。商品名は架空。ナレーター1人・約15秒（60文字）。CM文のみ出力。`;
+  return await callAPI(prompt, 200);
 }
 
 // ===== 読み上げ =====
@@ -328,19 +342,40 @@ function speak(text, djKey) {
   return new Promise(resolve => {
     const dj = djKey ? DJS[djKey] : { pitch:1.0, rate:1.0 };
     const u = new SpeechSynthesisUtterance(text);
-    u.lang = 'ja-JP';
-    u.pitch = dj.pitch;
-    u.rate = dj.rate;
+    u.lang = 'ja-JP'; u.pitch = dj.pitch; u.rate = dj.rate;
     if (voices.length > 0) u.voice = voices[0];
-    u.onend = resolve;
-    u.onerror = resolve;
+    u.onend = resolve; u.onerror = resolve;
     synth.speak(u);
   });
 }
 
 function wait(ms) { return new Promise(r => setTimeout(r, ms)); }
 
-// ===== UI更新 =====
+// ===== お便り =====
+function showLetterBox(theme) {
+  nextTheme = theme;
+  document.getElementById('nextThemeLabel').textContent = '📌 次のテーマ：' + theme;
+  document.getElementById('letterInput').value = '';
+  document.getElementById('letterSent').style.display = 'none';
+  document.getElementById('sendBtn').disabled = false;
+  document.getElementById('letterBox').classList.add('visible');
+}
+
+function hideLetterBox() {
+  document.getElementById('letterBox').classList.remove('visible');
+  pendingLetter = null;
+  nextTheme = null;
+}
+
+function sendLetter() {
+  const text = document.getElementById('letterInput').value.trim();
+  if (!text) return;
+  pendingLetter = text;
+  document.getElementById('sendBtn').disabled = true;
+  document.getElementById('letterSent').style.display = 'block';
+}
+
+// ===== UI =====
 function setStatus(msg, isError) {
   const el = document.getElementById('status');
   el.textContent = msg;
@@ -359,13 +394,11 @@ function setMode(mode, data) {
     bars.forEach(b => b.classList.add('talk','active'));
     document.getElementById('currentTheme').textContent = '📌 ' + data.theme;
     document.getElementById('cmBox').classList.remove('visible');
-    document.getElementById('chatLog').style.display = 'flex';
   } else if (mode === 'cm') {
     badge.textContent = '📺 CM中';
     badge.className = 'mode-badge mode-cm';
     bars.forEach(b => b.classList.add('cm','active'));
     document.getElementById('currentTheme').textContent = '次の話題を準備中...';
-    document.getElementById('chatLog').style.display = 'none';
     document.getElementById('cmBox').classList.add('visible');
   } else {
     badge.textContent = '⏳ 準備中';
@@ -374,82 +407,98 @@ function setMode(mode, data) {
   }
 }
 
-function renderChat(script) {
-  const log = document.getElementById('chatLog');
-  log.innerHTML = '';
-  script.lines.forEach((line, i) => {
-    const dj = DJS[line.djKey];
-    const side = line.djKey === script.keyA ? 'left' : 'right';
-    const div = document.createElement('div');
-    div.className = 'chat-bubble ' + side;
-    div.innerHTML = `
-      <div class="bubble-avatar">${dj.emoji}</div>
-      <div class="bubble-content">
-        <div class="bubble-name">${dj.name}</div>
-        <div class="bubble-text" id="line-${i}">${line.text}</div>
-      </div>`;
-    log.appendChild(div);
-  });
-}
-
-function highlight(idx) {
-  document.querySelectorAll('.bubble-text').forEach(el => el.classList.remove('speaking'));
-  const el = document.getElementById('line-' + idx);
-  if (el) { el.classList.add('speaking'); el.scrollIntoView({ behavior:'smooth', block:'nearest' }); }
+function pickDJs() {
+  const keys = Object.keys(DJS).sort(() => Math.random() - 0.5);
+  return [keys[0], keys[1]];
 }
 
 // ===== メインループ =====
 async function radioLoop() {
-  setMode('loading', {});
-  setStatus('最初の台本を生成中（10〜20秒かかります）...', false);
+  // ① オープニングCMを流しながら最初の台本を生成
+  setMode('cm', {});
+  document.getElementById('currentTheme').textContent = 'まもなく放送開始...';
+  setStatus('', false);
 
-  // 次のコンテンツを準備する共通関数
-  async function prepareNext() {
-    const theme = await fetchTheme();
-    const keys = Object.keys(DJS).sort(() => Math.random() - 0.5);
-    return await fetchScript(theme, keys[0], keys[1]);
-  }
+  const firstTheme = await fetchTheme();
+  const [fKeyA, fKeyB] = pickDJs();
 
-  let current;
-  try { current = await prepareNext(); }
-  catch(e) { setStatus('エラー: ' + e.message, true); stopRadio(); return; }
+  const [openingCm, firstScript] = await Promise.all([
+    fetchCM(true),
+    fetchScript(firstTheme, fKeyA, fKeyB, null)
+  ]);
+
+  // オープニングCM読み上げ
+  document.getElementById('cmBox').textContent = openingCm;
+  document.getElementById('cmBox').classList.add('visible');
+  await speak('AIラジオへようこそ。まずはスポンサーからのメッセージです。', null);
+  await wait(150);
+  await speak(openingCm, null);
+  await wait(400);
+  await speak('それでは放送スタートです。', null);
+  await wait(300);
+
+  let current = firstScript;
 
   while (isRunning) {
-    // トークパート
+    // ② トークパート開始
     setMode('talk', current);
-    renderChat(current);
     startBGM();
 
-    // 裏でCMと次台本を並行準備
-    const cmPromise = fetchCM().catch(() => 'AIラジオをお聴きいただきありがとうございます。');
-    const nextPromise = prepareNext().catch(() => prepareNext()); // 失敗したら1回リトライ
+    // トーク開始30秒後に次のテーマだけ先に決定してお便り受付開始
+    let nextThemeResolved = null;
+    let nextScriptPromise = null;
 
-    // 1行ずつ読み上げ
-    for (let i = 0; i < current.lines.length; i++) {
+    const themeTimer = setTimeout(async () => {
       if (!isRunning) return;
-      highlight(i);
+      try {
+        nextThemeResolved = await fetchTheme();
+        showLetterBox(nextThemeResolved);
+      } catch(e) {}
+    }, 30000);
+
+    // トーク読み上げ
+    for (let i = 0; i < current.lines.length; i++) {
+      if (!isRunning) { clearTimeout(themeTimer); return; }
       await speak(current.lines[i].text, current.lines[i].djKey);
       await wait(180);
     }
+
+    clearTimeout(themeTimer);
     if (!isRunning) return;
 
-    // CMパート
+    // ③ CMパート（この間に台本生成）
     stopBGM();
+    hideLetterBox();
     setMode('cm', {});
+
+    // テーマがまだ決まってなければここで決める
+    if (!nextThemeResolved) nextThemeResolved = await fetchTheme();
+
+    const [keyA, keyB] = pickDJs();
+    const letter = pendingLetter;
+    pendingLetter = null;
+
+    // CM読み上げと台本生成を並行
+    const cmPromise = fetchCM(false).catch(() => 'AIラジオをお聴きいただきありがとうございます。');
+    nextScriptPromise = fetchScript(nextThemeResolved, keyA, keyB, letter).catch(() =>
+      fetchScript(nextThemeResolved, keyA, keyB, null)
+    );
+
     const cmText = await cmPromise;
     document.getElementById('cmBox').textContent = cmText;
     await speak('それではCMです。', current.keyA);
     await wait(150);
     await speak(cmText, null);
     await wait(300);
-    await speak('以上CMでした。放送に戻ります！', current.keyB);
+    await speak('以上CMでした。放送に戻ります。', current.keyB);
     await wait(300);
+
     if (!isRunning) return;
 
-    // 次台本を待つ
+    // 台本を待つ
     setMode('loading', {});
     setStatus('次の台本を準備中...', false);
-    try { current = await nextPromise; }
+    try { current = await nextScriptPromise; }
     catch(e) { setStatus('エラー: ' + e.message, true); stopRadio(); return; }
   }
 }
@@ -467,36 +516,4 @@ async function startRadio() {
   } catch(e) {}
   isRunning = true;
   document.getElementById('startBtn').disabled = true;
-  document.getElementById('nowPlaying').classList.add('visible');
-  await radioLoop();
-}
-
-function stopRadio() {
-  isRunning = false;
-  usedThemes = [];
-  synth.cancel();
-  stopBGM();
-  if (audioCtx) { try { audioCtx.close(); } catch(e){} audioCtx = null; }
-  document.getElementById('nowPlaying').classList.remove('visible');
-  document.getElementById('startBtn').disabled = false;
-  setStatus('放送を終了しました', false);
-}
-
-// 画面オフ防止
-async function requestWakeLock() {
-  try {
-    if ('wakeLock' in navigator) {
-      await navigator.wakeLock.request('screen');
-      document.addEventListener('visibilitychange', async () => {
-        if (document.visibilityState === 'visible')
-          try { await navigator.wakeLock.request('screen'); } catch(e) {}
-      });
-    }
-  } catch(e) {}
-}
-
-loadKey();
-requestWakeLock();
-</script>
-</body>
-</html>
+  document.getEle
