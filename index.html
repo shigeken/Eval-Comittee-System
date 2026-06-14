@@ -120,6 +120,7 @@
   <hr class="divider">
   <button class="btn-main" id="startBtn" onclick="startRadio()">▶ 放送開始</button>
   <div class="status" id="status"></div>
+  <div id="debug" style="font-size:11px;color:#ff4d6d;margin-top:8px;font-family:monospace;word-break:break-all;"></div>
 </div>
 
 <div class="now-playing" id="nowPlaying">
@@ -516,4 +517,52 @@ async function startRadio() {
   } catch(e) {}
   isRunning = true;
   document.getElementById('startBtn').disabled = true;
-  document.getEle
+  document.getElementById('nowPlaying').classList.add('visible');
+  await radioLoop();
+}
+
+function stopRadio() {
+  isRunning = false;
+  usedThemes = [];
+  pendingLetter = null;
+  nextTheme = null;
+  synth.cancel();
+  stopBGM();
+  if (audioCtx) { try { audioCtx.close(); } catch(e){} audioCtx = null; }
+  hideLetterBox();
+  document.getElementById('nowPlaying').classList.remove('visible');
+  document.getElementById('startBtn').disabled = false;
+  setStatus('放送を終了しました', false);
+}
+
+// 画面オフ防止
+async function requestWakeLock() {
+  try {
+    if ('wakeLock' in navigator) {
+      await navigator.wakeLock.request('screen');
+      document.addEventListener('visibilitychange', async () => {
+        if (document.visibilityState === 'visible')
+          try { await navigator.wakeLock.request('screen'); } catch(e) {}
+      });
+    }
+  } catch(e) {}
+}
+
+function dbg(msg) {
+  const el = document.getElementById('debug');
+  if (el) el.textContent = msg;
+  console.log(msg);
+}
+
+const _startRadio = startRadio;
+startRadio = async function() {
+  dbg('startRadio呼ばれた');
+  try { await _startRadio(); }
+  catch(e) { dbg('エラー: ' + e.message); }
+};
+
+loadKey();
+requestWakeLock();
+</script>
+</body>
+</html>
