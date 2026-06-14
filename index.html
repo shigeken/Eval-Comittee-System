@@ -459,11 +459,11 @@ async function radioLoop() {
     let cmText;
     try { cmText = await cmPromise; } catch(e) { cmText = 'AIラジオをお聴きいただきありがとうございます。'; }
     document.getElementById('cmBox').textContent = cmText;
-    await speak('それではCMです。', 'a');
+    await speak('それではCMです。', current.djKeyA);
     await wait(150);
     await speak(cmText, null);
     await wait(300);
-    await speak('以上CMでした。放送に戻ります！', 'b');
+    await speak('以上CMでした。放送に戻ります！', current.djKeyB);
     await wait(300);
 
     if (!isRunning) return;
