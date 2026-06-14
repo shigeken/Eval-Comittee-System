@@ -751,6 +751,21 @@ function stopRadio() {
   setStatus('放送を終了しました', false);
 }
 
+// 画面をオフにしない
+async function requestWakeLock() {
+  try {
+    if ('wakeLock' in navigator) {
+      const lock = await navigator.wakeLock.request('screen');
+      document.addEventListener('visibilitychange', async () => {
+        if (document.visibilityState === 'visible') {
+          await navigator.wakeLock.request('screen');
+        }
+      });
+    }
+  } catch(e) { console.log('WakeLock:', e); }
+}
+requestWakeLock();
+  
 loadKey();
 </script>
 </body>
