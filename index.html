@@ -65,6 +65,18 @@
   .mode-cm{background:rgba(255,215,0,.2);color:#ffd700}
   .mode-loading{background:rgba(123,97,255,.2);color:var(--accent2)}
   .current-theme{font-size:15px;font-weight:700;margin-bottom:16px;color:var(--text)}
+  .loading-indicator{display:none;align-items:center;justify-content:center;gap:10px;
+    margin-bottom:16px;font-family:'Share Tech Mono',monospace;font-size:12px;color:var(--accent2)}
+  .loading-indicator.visible{display:flex}
+  .loading-dots span{width:8px;height:8px;border-radius:50%;background:var(--accent2);
+    display:inline-block;margin:0 3px;animation:dotpulse 1.2s ease-in-out infinite;opacity:.3}
+  .loading-dots span:nth-child(2){animation-delay:.4s}
+  .loading-dots span:nth-child(3){animation-delay:.8s}
+  @keyframes dotpulse{0%,100%{opacity:.3;transform:scale(1)}50%{opacity:1;transform:scale(1.3)}}
+  .timer-box{display:none;background:rgba(255,77,109,.07);border:1px solid rgba(255,77,109,.3);
+    border-radius:10px;padding:10px 14px;margin-bottom:12px;
+    font-family:'Share Tech Mono',monospace;font-size:12px;color:var(--accent);text-align:center}
+  .timer-box.visible{display:block}
   .letter-box{background:rgba(123,97,255,.07);border:1px solid rgba(123,97,255,.3);
     border-radius:14px;padding:16px;margin-bottom:16px;display:none}
   .letter-box.visible{display:block}
@@ -123,6 +135,11 @@
   </div>
   <div class="mode-badge mode-loading" id="modeBadge">⏳ 準備中</div>
   <div class="current-theme" id="currentTheme"></div>
+  <div class="loading-indicator" id="loadingIndicator">
+    <span>台本生成中</span>
+    <div class="loading-dots"><span></span><span></span><span></span></div>
+  </div>
+  <div class="timer-box" id="timerBox"></div>
   <div class="letter-box" id="letterBox">
     <div class="letter-title">📬 次のテーマへのお便り</div>
     <div class="next-theme-label" id="nextThemeLabel"></div>
@@ -146,7 +163,6 @@ const DJS = {
   d: { name:'ジョージ', emoji:'🧓', pitch:0.6,  rate:0.82, desc:'昭和のおじさんDJ。古いたとえ話が多く若者文化についていけないが人情味がある。' }
 };
 
-// ===== BGMパターン =====
 const BGM_PATTERNS = [
   { notes:[261.6,311.1,369.9,415.3], type:'sine',     interval:1.0, vol:0.03  },
   { notes:[329.6,392.0,440.0,523.2], type:'triangle', interval:0.7, vol:0.025 },
@@ -159,6 +175,7 @@ const BGM_PATTERNS = [
 let isRunning = false;
 let usedThemes = [];
 let pendingLetter = null;
+let timerInterval = null;
 let audioCtx = null;
 let bgmTimer = null;
 let bgmOn = false;
@@ -266,24 +283,22 @@ async function fetchTheme() {
 }
 
 async function fetchScript(theme, keyA, keyB, letter) {
-  const djA = DJS[keyA], djB = DJS[keyB];
   const letterSection = letter
-    ? `\n\n【リスナーからのお便り】\nテーマ「${theme}」について以下のお便りが届いています。トークの途中で自然な流れで読み上げて返答してください。\n「${letter}」` : '';
+    ? `\n\n【リスナーからのお便り】\nテーマ「${theme}」について届いています。トークの途中で自然に読み上げて返答してください。\n「${letter}」` : '';
   const raw = await callAPI(
     `あなたはラジオ番組の台本作家です。
 
-DJ A「${djA.name}」: ${djA.desc}
-DJ B「${djB.name}」: ${djB.desc}
+DJ A「${DJS[keyA].name}」: ${DJS[keyA].desc}
+DJ B「${DJS[keyB].name}」: ${DJS[keyB].desc}
 
 テーマ：${theme}${letterSection}
 
 【ルール】
 - 40〜50回のやり取り（約15分分）
-- 各セリフ1〜3文
-- 挨拶→テーマを深掘り→締めの流れ
+- 各セリフ1〜3文、挨拶→深掘り→締めの流れ
 - キャラクターを活かした自然な会話
-- 漢字はすべてひらがなに変換して出力する
-- 笑・！・？・（笑）などの記号や表現は一切使わない
+- 漢字はすべてひらがなに変換する
+- 笑・！・？・（笑）などの記号は使わない
 
 【出力形式のみ】
 A:セリフ
@@ -302,7 +317,7 @@ B:セリフ
 async function fetchCM() {
   const types = ['食品','アプリ','旅行','健康食品','家電','カフェ','スポーツジム','美容'];
   return await callAPI(
-    `架空の${types[Math.floor(Math.random()*types.length)]}のラジオCMを日本語で。商品名は架空。ナレーター1人・約15秒（60文字）。CM文のみ出力。`, 200
+    `架空の${types[Math.floor(Math.random()*types.length)]}のラジオCMを日本語で。商品名は架空。ナレーター1人・約15秒（60文字）。漢字はすべてひらがなに変換する。笑・！・？などの記号は使わない。CM文のみ出力。`, 200
   );
 }
 
@@ -319,6 +334,28 @@ function speak(text, djKey) {
 }
 
 function wait(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+// ===== タイマー =====
+function startTimer(seconds) {
+  clearInterval(timerInterval);
+  const box = document.getElementById('timerBox');
+  box.classList.add('visible');
+  let remaining = seconds;
+  const update = () => {
+    if (remaining < 0) { clearInterval(timerInterval); box.textContent = '⏰ お便り締め切りました'; return; }
+    const m = Math.floor(remaining / 60), s = remaining % 60;
+    box.textContent = `⏰ お便り締め切りまで ${m}:${String(s).padStart(2,'0')}`;
+    remaining--;
+  };
+  update();
+  timerInterval = setInterval(update, 1000);
+}
+
+function stopTimer() {
+  clearInterval(timerInterval);
+  timerInterval = null;
+  document.getElementById('timerBox').classList.remove('visible');
+}
 
 // ===== お便り =====
 function showLetterBox(theme) {
@@ -342,6 +379,10 @@ function sendLetter() {
 }
 
 // ===== UI =====
+function showLoading(show) {
+  document.getElementById('loadingIndicator').classList.toggle('visible', show);
+}
+
 function setStatus(msg, isError) {
   const el = document.getElementById('status');
   el.textContent = msg;
@@ -350,19 +391,16 @@ function setStatus(msg, isError) {
 
 function setMode(mode, data) {
   const badge = document.getElementById('modeBadge');
-  const bars = document.querySelectorAll('.bar');
-  bars.forEach(b => { b.classList.remove('active','cm'); });
-
+  document.querySelectorAll('.bar').forEach(b => b.classList.remove('active','cm'));
   if (mode === 'talk') {
-    const a = DJS[data.keyA], b = DJS[data.keyB];
-    badge.textContent = `🎙️ ${a.emoji}${a.name} × ${b.emoji}${b.name}`;
+    badge.textContent = `🎙️ ${DJS[data.keyA].emoji}${DJS[data.keyA].name} × ${DJS[data.keyB].emoji}${DJS[data.keyB].name}`;
     badge.className = 'mode-badge mode-talk';
-    bars.forEach(b => b.classList.add('active'));
+    document.querySelectorAll('.bar').forEach(b => b.classList.add('active'));
     document.getElementById('currentTheme').textContent = '📌 ' + data.theme;
   } else if (mode === 'cm') {
     badge.textContent = '📺 CM中';
     badge.className = 'mode-badge mode-cm';
-    bars.forEach(b => b.classList.add('active','cm'));
+    document.querySelectorAll('.bar').forEach(b => b.classList.add('active','cm'));
     document.getElementById('currentTheme').textContent = '次の話題を準備中...';
   } else {
     badge.textContent = '⏳ 準備中';
@@ -372,119 +410,68 @@ function setMode(mode, data) {
 }
 
 function pickDJs() {
-  const keys = Object.keys(DJS).sort(() => Math.random() - 0.5);
-  return [keys[0], keys[1]];
+  return Object.keys(DJS).sort(() => Math.random() - 0.5).slice(0, 2);
 }
 
 // ===== メインループ =====
 async function radioLoop() {
-  setMode('cm', {});
+  setMode('loading', {});
   document.getElementById('currentTheme').textContent = 'まもなく放送開始...';
+  showLoading(true);
 
-  // 即座に読み上げ＆裏で台本生成
   await speak('AIラジオへようこそ。ただいま番組を準備中です。しばらくお待ちください。', null);
   await wait(200);
 
-  const firstTheme = await fetchTheme();
   const [fKeyA, fKeyB] = pickDJs();
-  let current = await fetchScript(firstTheme, fKeyA, fKeyB, null);
+  let current = await fetchScript(await fetchTheme(), fKeyA, fKeyB, null);
+  showLoading(false);
 
   while (isRunning) {
-    // トークパート
     setMode('talk', current);
     startBGM();
 
-    // 30秒後に次テーマを決定してお便り受付開始
+    // セリフ数×平均5秒でトーク時間を推定、終了3分前を締め切りに
+    const deadlineSec = Math.max(60, current.lines.length * 5 - 180);
     let nextTheme = null;
-    const themeTimer = setTimeout(async () => {
+    let nextPromise = null;
+
+    // タイマーIDをループ外で管理してスコープ問題を解消
+    const timers = { theme: null, deadline: null };
+
+    timers.theme = setTimeout(async () => {
       if (!isRunning) return;
-      try { nextTheme = await fetchTheme(); showLetterBox(nextTheme); } catch(e) {}
+      try {
+        nextTheme = await fetchTheme();
+        showLetterBox(nextTheme);
+        startTimer(deadlineSec - 30);
+        timers.deadline = setTimeout(() => {
+          if (!isRunning) return;
+          const [keyA, keyB] = pickDJs();
+          const letter = pendingLetter; pendingLetter = null;
+          nextPromise = fetchScript(nextTheme, keyA, keyB, letter)
+            .catch(() => fetchScript(nextTheme, keyA, keyB, null));
+        }, (deadlineSec - 30) * 1000);
+      } catch(e) {}
     }, 30000);
 
     for (let i = 0; i < current.lines.length; i++) {
-      if (!isRunning) { clearTimeout(themeTimer); return; }
+      if (!isRunning) { clearTimeout(timers.theme); clearTimeout(timers.deadline); return; }
       await speak(current.lines[i].text, current.lines[i].djKey);
       await wait(180);
     }
 
-    clearTimeout(themeTimer);
+    clearTimeout(timers.theme); clearTimeout(timers.deadline);
     if (!isRunning) return;
 
-    // CMパート（台本生成と並行）
-    stopBGM();
-    hideLetterBox();
+    // CMパート
+    stopBGM(); stopTimer(); hideLetterBox();
     setMode('cm', {});
 
-    if (!nextTheme) nextTheme = await fetchTheme();
-    const [keyA, keyB] = pickDJs();
-    const letter = pendingLetter;
-    pendingLetter = null;
-
-    const cmPromise = fetchCM().catch(() => 'AIラジオをお聴きいただきありがとうございます。');
-    const nextPromise = fetchScript(nextTheme, keyA, keyB, letter).catch(() => fetchScript(nextTheme, keyA, keyB, null));
-
-    const cmText = await cmPromise;
-    await speak('それではCMです。', current.keyA);
-    await wait(150);
-    await speak(cmText, null);
-    await wait(300);
-    await speak('以上CMでした。放送に戻ります。', current.keyB);
-    await wait(300);
-    if (!isRunning) return;
-
-    setMode('loading', {});
-    setStatus('次の台本を準備中...', false);
-    try { current = await nextPromise; }
-    catch(e) { setStatus('エラー: ' + e.message, true); stopRadio(); return; }
-    setStatus('', false);
-  }
-}
-
-// ===== 開始・終了 =====
-async function startRadio() {
-  const apiKey = getApiKey();
-  if (!apiKey) { setStatus('APIキーを入力してください', true); return; }
-  try {
-    if (document.getElementById('saveKey')?.checked) {
-      localStorage.setItem('ai_radio_key', apiKey);
-      document.getElementById('keySavedBanner').style.display = 'flex';
-      document.getElementById('keyInputArea').style.display = 'none';
+    // 台本がまだなければフォールバック生成
+    if (!nextPromise) {
+      if (!nextTheme) nextTheme = await fetchTheme();
+      const [keyA, keyB] = pickDJs();
+      const letter = pendingLetter; pendingLetter = null;
+      nextPromise = fetchScript(nextTheme, keyA, keyB, letter)
+        .catch(() => fetchScript(nextTheme, keyA, keyB, null));
     }
-  } catch(e) {}
-  isRunning = true;
-  document.getElementById('startBtn').disabled = true;
-  document.getElementById('nowPlaying').classList.add('visible');
-  await radioLoop();
-}
-
-function stopRadio() {
-  isRunning = false;
-  usedThemes = [];
-  pendingLetter = null;
-  synth.cancel();
-  stopBGM();
-  if (audioCtx) { try { audioCtx.close(); } catch(e){} audioCtx = null; }
-  hideLetterBox();
-  document.getElementById('nowPlaying').classList.remove('visible');
-  document.getElementById('startBtn').disabled = false;
-  setStatus('放送を終了しました', false);
-}
-
-// 画面オフ防止
-async function requestWakeLock() {
-  try {
-    if ('wakeLock' in navigator) {
-      await navigator.wakeLock.request('screen');
-      document.addEventListener('visibilitychange', async () => {
-        if (document.visibilityState === 'visible')
-          try { await navigator.wakeLock.request('screen'); } catch(e) {}
-      });
-    }
-  } catch(e) {}
-}
-
-loadKey();
-requestWakeLock();
-</script>
-</body>
-</html>
