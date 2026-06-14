@@ -63,8 +63,7 @@
   .mode-cm{background:rgba(255,215,0,.2);color:#ffd700}
   .mode-loading{background:rgba(123,97,255,.2);color:var(--accent2)}
   .current-theme{font-size:15px;font-weight:700;margin-bottom:16px;color:var(--text)}
-  .chat-log{display:flex;flex-direction:column;gap:10px;margin-bottom:16px;
-    max-height:350px;overflow-y:auto}
+  .chat-log{display:flex;flex-direction:column;gap:10px;margin-bottom:16px;max-height:350px;overflow-y:auto}
   .chat-bubble{display:flex;gap:10px;align-items:flex-start}
   .chat-bubble.right{flex-direction:row-reverse}
   .bubble-avatar{font-size:22px;flex-shrink:0;width:32px;text-align:center}
@@ -83,8 +82,7 @@
   .cm-box.visible{display:block}
   .bgm-indicator{display:flex;align-items:center;gap:8px;
     font-family:'Share Tech Mono',monospace;font-size:11px;color:var(--muted);margin-top:12px}
-  .bgm-dot{width:6px;height:6px;border-radius:50%;background:var(--accent2);
-    animation:pulse 1.5s ease-in-out infinite}
+  .bgm-dot{width:6px;height:6px;border-radius:50%;background:var(--accent2);animation:pulse 1.5s ease-in-out infinite}
   .bgm-dot.off{background:var(--muted);animation:none;opacity:.3}
   @keyframes pulse{0%,100%{opacity:.3}50%{opacity:1}}
   .status{font-family:'Share Tech Mono',monospace;font-size:11px;color:var(--muted);
@@ -137,22 +135,13 @@
 </div>
 
 <script>
-// ===== DJ定義（4人）=====
+// ===== DJ定義 =====
 const DJS = {
-  a: { name:'ハル',   emoji:'😄', pitch:1.2,  rate:1.0,  desc:'明るくテンション高め。話を広げるのが得意。' },
-  b: { name:'ソラ',   emoji:'🤓', pitch:0.85, rate:0.95, desc:'冷静で知識豊富。ツッコミ担当。' },
-  c: { name:'ナナ',   emoji:'😎', pitch:1.3,  rate:1.1,  desc:'トレンド大好きギャル系。話が脱線しがち。テンションが読めない。' },
-  d: { name:'ジョージ',emoji:'🧓', pitch:0.75, rate:0.88, desc:'昭和のおじさんDJ。古いたとえ話が多く若者文化についていけないが人情味がある。' }
+  a: { name:'ハル',    emoji:'😄', pitch:1.2,  rate:1.0,  desc:'明るくテンション高め。話を広げるのが得意。' },
+  b: { name:'ソラ',    emoji:'🤓', pitch:0.85, rate:0.95, desc:'冷静で知識豊富。ツッコミ担当。' },
+  c: { name:'ナナ',    emoji:'😎', pitch:1.3,  rate:1.1,  desc:'トレンド大好きギャル系。話が脱線しがち。テンションが読めない。' },
+  d: { name:'ジョージ', emoji:'🧓', pitch:0.75, rate:0.88, desc:'昭和のおじさんDJ。古いたとえ話が多く若者文化についていけないが人情味がある。' }
 };
-
-function pickDJs() {
-  const keys = Object.keys(DJS);
-  for (let i = keys.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [keys[i], keys[j]] = [keys[j], keys[i]];
-  }
-  return [keys[0], keys[1]];
-}
 
 // ===== BGMパターン =====
 const BGM_PATTERNS = [
@@ -165,24 +154,22 @@ const BGM_PATTERNS = [
 
 // ===== 状態 =====
 let isRunning = false;
-let synth = window.speechSynthesis;
-let voices = [];
+let usedThemes = [];
 let audioCtx = null;
-let bgmNodes = [];
-let bgmLoopTimer = null;
+let bgmTimer = null;
 let bgmOn = false;
 let lastBgmIdx = -1;
+let synth = window.speechSynthesis;
+let voices = [];
 
-// ===== 音声 =====
+// ===== 音声読み込み =====
 function loadVoices() {
   voices = synth.getVoices().filter(v => v.lang.startsWith('ja'));
 }
 loadVoices();
-if (speechSynthesis.onvoiceschanged !== undefined) {
-  speechSynthesis.onvoiceschanged = loadVoices;
-}
+if (synth.onvoiceschanged !== undefined) synth.onvoiceschanged = loadVoices;
 
-// ===== APIキー =====
+// ===== APIキー管理 =====
 function loadKey() {
   try {
     if (localStorage.getItem('ai_radio_key')) {
@@ -203,17 +190,11 @@ function getApiKey() {
   return document.getElementById('apiKey').value.trim();
 }
 
-function setStatus(msg, isError) {
-  const el = document.getElementById('status');
-  el.textContent = msg;
-  el.className = 'status' + (isError ? ' error' : '');
-}
-
 // ===== BGM =====
 function pickBgm() {
   let idx;
   do { idx = Math.floor(Math.random() * BGM_PATTERNS.length); }
-  while (idx === lastBgmIdx && BGM_PATTERNS.length > 1);
+  while (idx === lastBgmIdx);
   lastBgmIdx = idx;
   return BGM_PATTERNS[idx];
 }
@@ -225,7 +206,8 @@ function bgmTick(pattern) {
     try {
       const osc = audioCtx.createOscillator();
       const gain = audioCtx.createGain();
-      osc.connect(gain); gain.connect(audioCtx.destination);
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
       const note = pattern.notes[Math.floor(Math.random() * pattern.notes.length)];
       osc.frequency.value = note * (Math.random() > 0.5 ? 1 : 0.5);
       osc.type = pattern.type;
@@ -234,11 +216,13 @@ function bgmTick(pattern) {
       gain.gain.setValueAtTime(0, s);
       gain.gain.linearRampToValueAtTime(pattern.vol, s + 0.3);
       gain.gain.linearRampToValueAtTime(0, s + d);
-      osc.start(s); osc.stop(s + d);
-      bgmNodes.push(osc);
+      osc.start(s);
+      // 終了後に自動でGCされるようonendedで参照を手放す
+      osc.onended = () => osc.disconnect();
+      osc.stop(s + d);
     } catch(e) {}
   }
-  bgmLoopTimer = setTimeout(() => bgmTick(pattern), 8 * pattern.interval * 1000 - 300);
+  bgmTimer = setTimeout(() => bgmTick(pattern), 8 * pattern.interval * 1000 - 300);
 }
 
 function startBGM() {
@@ -253,17 +237,14 @@ function startBGM() {
 
 function stopBGM() {
   bgmOn = false;
-  if (bgmLoopTimer) { clearTimeout(bgmLoopTimer); bgmLoopTimer = null; }
-  bgmNodes.forEach(n => { try { n.stop(); } catch(e){} });
-  bgmNodes = [];
+  clearTimeout(bgmTimer);
+  bgmTimer = null;
   setBgmUI(false);
 }
 
 function setBgmUI(on) {
-  const dot = document.getElementById('bgmDot');
-  const label = document.getElementById('bgmLabel');
-  if (on) { dot.classList.remove('off'); label.textContent = 'BGM 再生中'; }
-  else     { dot.classList.add('off');    label.textContent = 'BGM 停止中'; }
+  document.getElementById('bgmDot').classList.toggle('off', !on);
+  document.getElementById('bgmLabel').textContent = on ? 'BGM 再生中' : 'BGM 停止中';
 }
 
 // ===== API呼び出し =====
@@ -283,25 +264,28 @@ async function callAPI(prompt, maxTokens) {
     })
   });
   if (!res.ok) { const e = await res.json(); throw new Error(e.error?.message || 'APIエラー'); }
-  const data = await res.json();
-  return data.content[0].text.trim();
+  return (await res.json()).content[0].text.trim();
 }
 
-// ===== テーマ生成 =====
+// ===== コンテンツ生成 =====
 async function fetchTheme() {
   const useNews = Math.random() < 0.3;
-  const prompt = useNews
-    ? 'あなたはラジオ番組のプロデューサーです。最近の日本や世界のニュース・トレンドを踏まえて、ラジオトークのテーマを1つ考えてください。テーマの文章のみ出力してください（例：最近話題の○○について）。説明不要。'
-    : 'あなたはラジオ番組のプロデューサーです。リスナーが楽しめる面白いラジオトークのテーマを1つ考えてください。日常・文化・雑学・人生・トレンドなど何でもOK。テーマの文章のみ出力してください（例：○○について）。説明不要。毎回違うテーマにしてください。';
-  return await callAPI(prompt, 100);
+  const exclusion = usedThemes.length > 0
+    ? '\n\n【使用済みなので絶対に除外】\n' + usedThemes.map((t, i) => `${i+1}. ${t}`).join('\n')
+    : '';
+  const base = useNews
+    ? 'あなたはラジオ番組のプロデューサーです。最近の日本や世界のニュース・トレンドを踏まえて、ラジオトークのテーマを1つ考えてください。'
+    : 'あなたはラジオ番組のプロデューサーです。リスナーが楽しめる面白いラジオトークのテーマを1つ考えてください。日常・文化・雑学・人生・トレンドなど何でもOK。';
+  const theme = await callAPI(base + 'テーマの文章のみ出力（例：○○について）。説明不要。' + exclusion, 100);
+  usedThemes.push(theme);
+  if (usedThemes.length > 20) usedThemes.shift();
+  return theme;
 }
 
-// ===== 台本生成 =====
-async function fetchScript(theme, djKeyA, djKeyB) {
-  const djA = DJS[djKeyA];
-  const djB = DJS[djKeyB];
+async function fetchScript(theme, keyA, keyB) {
+  const djA = DJS[keyA], djB = DJS[keyB];
   const raw = await callAPI(
-    `あなたはラジオ番組の台本作家です。2人のDJが会話するラジオ番組の台本を作ってください。
+    `あなたはラジオ番組の台本作家です。
 
 DJ A「${djA.name}」: ${djA.desc}
 DJ B「${djB.name}」: ${djB.desc}
@@ -309,73 +293,74 @@ DJ B「${djB.name}」: ${djB.desc}
 テーマ：${theme}
 
 【ルール】
-- 全部で40〜50回のやり取り（約15分分）
-- 各セリフは1〜3文
-- 挨拶から始まり、テーマを深掘りしながら自然に盛り上がり、最後に締める
-- 各DJのキャラクターを活かした自然な会話にする
+- 40〜50回のやり取り（約15分分）
+- 各セリフ1〜3文
+- 挨拶→テーマを深掘り→締めの流れ
+- キャラクターを活かした自然な会話
 
-【出力形式】この形式のみ：
+【出力形式のみ】
 A:セリフ
 B:セリフ
-A:セリフ
-...
-
-余計な説明不要。`,
-    4096
-  );
+...`, 4096);
 
   const lines = [];
   raw.split('\n').forEach(line => {
     const t = line.trim();
-    if (t.startsWith('A:')) lines.push({ djKey: djKeyA, text: t.slice(2).trim() });
-    else if (t.startsWith('B:')) lines.push({ djKey: djKeyB, text: t.slice(2).trim() });
+    if (t.startsWith('A:')) lines.push({ djKey: keyA, text: t.slice(2).trim() });
+    else if (t.startsWith('B:')) lines.push({ djKey: keyB, text: t.slice(2).trim() });
   });
-  return { theme, lines, djKeyA, djKeyB };
+  return { theme, lines, keyA, keyB };
 }
 
-// ===== CM生成 =====
 async function fetchCM() {
   const types = ['食品','アプリ','旅行','健康食品','家電','カフェ','スポーツジム','美容'];
   const type = types[Math.floor(Math.random() * types.length)];
   return await callAPI(
-    `架空の${type}のラジオCMを日本語で作ってください。商品名は架空のもの。ナレーター1人が読む形式で約15秒分（60文字程度）。CMの文章のみ出力。`,
-    200
+    `架空の${type}のラジオCMを日本語で。商品名は架空。ナレーター1人・約15秒（60文字）。CM文のみ出力。`, 200
   );
 }
 
 // ===== 読み上げ =====
 function speak(text, djKey) {
   return new Promise(resolve => {
-    synth.cancel();
-    const dj = djKey ? DJS[djKey] : { pitch: 1.0, rate: 1.0 };
+    const dj = djKey ? DJS[djKey] : { pitch:1.0, rate:1.0 };
     const u = new SpeechSynthesisUtterance(text);
-    u.lang = 'ja-JP'; u.pitch = dj.pitch; u.rate = dj.rate;
+    u.lang = 'ja-JP';
+    u.pitch = dj.pitch;
+    u.rate = dj.rate;
     if (voices.length > 0) u.voice = voices[0];
-    u.onend = resolve; u.onerror = resolve;
+    u.onend = resolve;
+    u.onerror = resolve;
     synth.speak(u);
   });
 }
 
 function wait(ms) { return new Promise(r => setTimeout(r, ms)); }
 
-// ===== UI =====
+// ===== UI更新 =====
+function setStatus(msg, isError) {
+  const el = document.getElementById('status');
+  el.textContent = msg;
+  el.className = 'status' + (isError ? ' error' : '');
+}
+
 function setMode(mode, data) {
   const badge = document.getElementById('modeBadge');
   const bars = document.querySelectorAll('.bar');
   bars.forEach(b => b.classList.remove('talk','cm','active'));
 
   if (mode === 'talk') {
-    const label = DJS[data.djKeyA].emoji + DJS[data.djKeyA].name + ' × ' + DJS[data.djKeyB].emoji + DJS[data.djKeyB].name;
-    badge.textContent = '🎙️ ' + label;
+    const a = DJS[data.keyA], b = DJS[data.keyB];
+    badge.textContent = `🎙️ ${a.emoji}${a.name} × ${b.emoji}${b.name}`;
     badge.className = 'mode-badge mode-talk';
-    bars.forEach(b => { b.classList.add('talk','active'); });
+    bars.forEach(b => b.classList.add('talk','active'));
     document.getElementById('currentTheme').textContent = '📌 ' + data.theme;
     document.getElementById('cmBox').classList.remove('visible');
     document.getElementById('chatLog').style.display = 'flex';
   } else if (mode === 'cm') {
     badge.textContent = '📺 CM中';
     badge.className = 'mode-badge mode-cm';
-    bars.forEach(b => { b.classList.add('cm','active'); });
+    bars.forEach(b => b.classList.add('cm','active'));
     document.getElementById('currentTheme').textContent = '次の話題を準備中...';
     document.getElementById('chatLog').style.display = 'none';
     document.getElementById('cmBox').classList.add('visible');
@@ -391,7 +376,7 @@ function renderChat(script) {
   log.innerHTML = '';
   script.lines.forEach((line, i) => {
     const dj = DJS[line.djKey];
-    const side = line.djKey === script.djKeyA ? 'left' : 'right';
+    const side = line.djKey === script.keyA ? 'left' : 'right';
     const div = document.createElement('div');
     div.className = 'chat-bubble ' + side;
     div.innerHTML = `
@@ -415,15 +400,16 @@ async function radioLoop() {
   setMode('loading', {});
   setStatus('最初の台本を生成中（10〜20秒かかります）...', false);
 
-  let current;
-  try {
+  // 次のコンテンツを準備する共通関数
+  async function prepareNext() {
     const theme = await fetchTheme();
-    const [keyA, keyB] = pickDJs();
-    current = await fetchScript(theme, keyA, keyB);
-  } catch(e) {
-    setStatus('エラー: ' + e.message, true);
-    stopRadio(); return;
+    const keys = Object.keys(DJS).sort(() => Math.random() - 0.5);
+    return await fetchScript(theme, keys[0], keys[1]);
   }
+
+  let current;
+  try { current = await prepareNext(); }
+  catch(e) { setStatus('エラー: ' + e.message, true); stopRadio(); return; }
 
   while (isRunning) {
     // トークパート
@@ -431,49 +417,37 @@ async function radioLoop() {
     renderChat(current);
     startBGM();
 
-    // 裏でCMと次の台本を準備
-    const cmPromise = fetchCM().catch(() => '提供：AIラジオスタジオ。いつもご愛聴ありがとうございます。');
-    const nextPromise = (async () => {
-      const theme = await fetchTheme();
-      const [keyA, keyB] = pickDJs();
-      return await fetchScript(theme, keyA, keyB);
-    })().catch(async () => {
-      await wait(3000);
-      const theme = await fetchTheme();
-      const [keyA, keyB] = pickDJs();
-      return await fetchScript(theme, keyA, keyB);
-    });
+    // 裏でCMと次台本を並行準備
+    const cmPromise = fetchCM().catch(() => 'AIラジオをお聴きいただきありがとうございます。');
+    const nextPromise = prepareNext().catch(() => prepareNext()); // 失敗したら1回リトライ
 
+    // 1行ずつ読み上げ
     for (let i = 0; i < current.lines.length; i++) {
       if (!isRunning) return;
       highlight(i);
       await speak(current.lines[i].text, current.lines[i].djKey);
       await wait(180);
     }
-
     if (!isRunning) return;
 
     // CMパート
     stopBGM();
     setMode('cm', {});
-    let cmText;
-    try { cmText = await cmPromise; } catch(e) { cmText = 'AIラジオをお聴きいただきありがとうございます。'; }
+    const cmText = await cmPromise;
     document.getElementById('cmBox').textContent = cmText;
-    await speak('それではCMです。', current.djKeyA);
+    await speak('それではCMです。', current.keyA);
     await wait(150);
     await speak(cmText, null);
     await wait(300);
-    await speak('以上CMでした。放送に戻ります！', current.djKeyB);
+    await speak('以上CMでした。放送に戻ります！', current.keyB);
     await wait(300);
-
     if (!isRunning) return;
 
+    // 次台本を待つ
     setMode('loading', {});
     setStatus('次の台本を準備中...', false);
-    try { current = await nextPromise; } catch(e) {
-      setStatus('エラー: ' + e.message, true);
-      stopRadio(); return;
-    }
+    try { current = await nextPromise; }
+    catch(e) { setStatus('エラー: ' + e.message, true); stopRadio(); return; }
   }
 }
 
@@ -496,6 +470,7 @@ async function startRadio() {
 
 function stopRadio() {
   isRunning = false;
+  usedThemes = [];
   synth.cancel();
   stopBGM();
   if (audioCtx) { try { audioCtx.close(); } catch(e){} audioCtx = null; }
@@ -510,9 +485,8 @@ async function requestWakeLock() {
     if ('wakeLock' in navigator) {
       await navigator.wakeLock.request('screen');
       document.addEventListener('visibilitychange', async () => {
-        if (document.visibilityState === 'visible') {
+        if (document.visibilityState === 'visible')
           try { await navigator.wakeLock.request('screen'); } catch(e) {}
-        }
       });
     }
   } catch(e) {}
