@@ -23,12 +23,12 @@
     padding:24px 20px;width:100%;max-width:480px;margin-bottom:16px}
   .section-label{font-family:'Share Tech Mono',monospace;font-size:10px;letter-spacing:3px;
     color:var(--muted);text-transform:uppercase;margin-bottom:8px}
-  input[type="password"],textarea{width:100%;background:var(--bg);border:1px solid var(--border);
-    border-radius:10px;color:var(--text);font-family:'Zen Kaku Gothic New',sans-serif;font-size:14px;
-    padding:12px 14px;outline:none;transition:border-color .2s;-webkit-appearance:none}
-  input[type="password"]:focus,textarea:focus{border-color:var(--accent2)}
-  input[type="password"]{font-family:'Share Tech Mono',monospace;letter-spacing:2px}
-  textarea{resize:none;height:80px;line-height:1.6}
+  .text-input{width:100%;background:var(--bg);border:1px solid var(--border);border-radius:10px;
+    color:var(--text);font-family:'Zen Kaku Gothic New',sans-serif;font-size:14px;
+    padding:12px 14px;outline:none;transition:border-color .2s;-webkit-appearance:none;margin-bottom:16px}
+  .text-input:focus{border-color:var(--accent2)}
+  #apiKey{font-family:'Share Tech Mono',monospace;letter-spacing:2px;margin-bottom:0}
+  textarea.text-input{resize:none;height:80px;line-height:1.6;margin-bottom:0}
   .key-saved{display:flex;align-items:center;justify-content:space-between;
     background:rgba(123,97,255,.1);border:1px solid rgba(123,97,255,.3);
     border-radius:10px;padding:10px 14px;font-size:13px;color:var(--accent2)}
@@ -115,13 +115,15 @@
     <button onclick="clearKey()">削除して再入力</button>
   </div>
   <div id="keyInputArea">
-    <input type="password" id="apiKey" placeholder="sk-ant-api..." autocomplete="off">
+    <input type="password" id="apiKey" class="text-input" placeholder="sk-ant-api..." autocomplete="off">
     <div style="margin-top:8px;display:flex;gap:8px;align-items:center;">
       <input type="checkbox" id="saveKey" checked style="width:auto;padding:0;accent-color:var(--accent2)">
       <label for="saveKey" style="font-size:12px;color:var(--muted);cursor:pointer">このデバイスに保存する</label>
     </div>
   </div>
   <hr class="divider">
+  <div class="section-label">🎙️ ラジオネーム</div>
+  <input type="text" id="radioName" class="text-input" placeholder="ラジオネームを入力..." maxlength="20" value="匿名リスナー">
   <button class="btn-main" id="startBtn" onclick="startRadio()">▶ 放送開始</button>
   <div class="status" id="status"></div>
 </div>
@@ -143,13 +145,13 @@
   <div class="letter-box" id="letterBox">
     <div class="letter-title">📬 次のテーマへのお便り</div>
     <div class="next-theme-label" id="nextThemeLabel"></div>
-    <textarea id="letterInput" placeholder="このテーマについて一言どうぞ..."></textarea>
+    <textarea id="letterInput" class="text-input" placeholder="このテーマについて一言どうぞ..."></textarea>
     <button class="btn-send" id="sendBtn" onclick="sendLetter()">送信する</button>
     <div class="letter-sent" id="letterSent">✅ お便りを受け付けました！次の放送でDJが読みます</div>
   </div>
   <div class="bgm-indicator">
-    <div class="bgm-dot" id="bgmDot"></div>
-    <span id="bgmLabel">BGM 再生中</span>
+    <div class="bgm-dot off" id="bgmDot"></div>
+    <span id="bgmLabel">BGM 停止中</span>
   </div>
   <button class="btn-stop" onclick="stopRadio()">■ 放送終了</button>
 </div>
@@ -157,10 +159,10 @@
 <script>
 // ===== DJ定義 =====
 const DJS = {
-  a: { name:'ハル',     emoji:'😄', pitch:1.5,  rate:1.1,  desc:'明るくテンション高め。話を広げるのが得意。' },
-  b: { name:'ソラ',     emoji:'🤓', pitch:0.8,  rate:0.9,  desc:'冷静で知識豊富。ツッコミ担当。' },
-  c: { name:'ナナ',     emoji:'😎', pitch:1.9,  rate:1.15, desc:'トレンド大好きギャル系。話が脱線しがち。テンションが読めない。' },
-  d: { name:'ジョージ', emoji:'🧓', pitch:0.6,  rate:0.82, desc:'昭和のおじさんDJ。古いたとえ話が多く若者文化についていけないが人情味がある。' }
+  a: { name:'ハル',     emoji:'😄', pitch:1.5,  rate:1.1,  desc:'24歳、神奈川出身のカフェ店員（休日はラジオDJ）。テンション高めでポジティブ、天真爛漫。「それ最高じゃないですか」「えーほんとに」が口癖。タメ口気味で語尾が上がる。インスタ映えスポット巡りや韓国ドラマが好き。数字と難しい話と朝が苦手。' },
+  b: { name:'ソラ',     emoji:'🤓', pitch:0.8,  rate:0.9,  desc:'31歳、京都出身のITエンジニア（副業でラジオDJ）。冷静で知識豊富、少し皮肉屋。「それは違くて」「実はですね」が口癖。丁寧語ベースでたまに早口、ツッコミが鋭い。読書やプログラミングや将棋が好き。感情論と体育会系ノリが苦手。' },
+  c: { name:'ナナ',     emoji:'😎', pitch:1.9,  rate:1.15, desc:'17歳、大阪出身の高校生（放課後にラジオDJ見習い）。ギャル系で自由奔放、空気を読まない天才。「えぇ〜マジで」「それってバズりそう」「しか勝たん」が口癖。ギャル語混じりでテンションが急に変わり話が脱線しまくる。TikTokやネイルやフェスが好き。ルールと時間を守ることと難しい漢字が苦手。' },
+  d: { name:'ジョージ', emoji:'🧓', pitch:0.6,  rate:0.82, desc:'62歳、大阪出身で定年退職後にラジオDJに転身。昭和気質で頑固だが情に厚く世話焼き。「わしの若い頃はな」「それはアカン」「なんでやねん」が口癖。関西弁でたとえ話が長くてズレてる、若者言葉を間違って使う。競馬や演歌や銭湯や晩酌が好き。スマホとSNSと横文字と若者文化が苦手。なぜか最後は的を射たことを言う。' }
 };
 
 const BGM_PATTERNS = [
@@ -171,10 +173,13 @@ const BGM_PATTERNS = [
   { notes:[196.0,220.0,261.6,293.6], type:'sine',     interval:1.1, vol:0.03  }
 ];
 
+const FAKE_NAMES = ['たけし','はなこ','ゆうき','さくら','けんじ','みお','りょう','あやか'];
+
 // ===== 状態 =====
 let isRunning = false;
 let usedThemes = [];
 let pendingLetter = null;
+let radioName = '匿名リスナー';
 let timerInterval = null;
 let audioCtx = null;
 let bgmTimer = null;
@@ -282,9 +287,29 @@ async function fetchTheme() {
   return theme;
 }
 
-async function fetchScript(theme, keyA, keyB, letter) {
+// お便りを決定する（自分のお便り or 架空リスナー）
+async function decideLetter(theme, userLetter) {
+  if (userLetter) {
+    // テーマ判定 + 50%確率
+    const judge = await callAPI(
+      `以下のお便りはラジオトークのテーマ「${theme}」に関連していますか？「yes」か「no」のみ答えてください。\nお便り：「${userLetter}」`, 10
+    ).catch(() => 'no');
+    if (judge.toLowerCase().includes('yes') && Math.random() < 0.5) {
+      return { text: userLetter, name: radioName };
+    }
+  }
+  // 架空リスナーのお便りを生成
+  const fakeName = FAKE_NAMES[Math.floor(Math.random() * FAKE_NAMES.length)];
+  const fakeText = await callAPI(
+    `ラジオ番組のリスナー「${fakeName}」が「${theme}」というテーマに関して送ったお便りを1〜2文で作ってください。自然な話し言葉で。お便りの文章のみ出力。`, 150
+  ).catch(() => null);
+  return fakeText ? { text: fakeText, name: fakeName } : null;
+}
+
+async function fetchScript(theme, keyA, keyB, userLetter) {
+  const letter = await decideLetter(theme, userLetter);
   const letterSection = letter
-    ? `\n\n【リスナーからのお便り】\nテーマ「${theme}」について届いています。トークの途中で自然に読み上げて返答してください。\n「${letter}」` : '';
+    ? `\n\n【リスナーからのお便り】\nラジオネーム「${letter.name}」さんからのお便りです。トークの途中で自然に読み上げて返答してください。\n「${letter.text}」` : '';
   const raw = await callAPI(
     `あなたはラジオ番組の台本作家です。
 
@@ -298,6 +323,7 @@ DJ B「${DJS[keyB].name}」: ${DJS[keyB].desc}
 - 各セリフ1〜3文、挨拶→深掘り→締めの流れ
 - キャラクターを活かした自然な会話
 - 漢字はすべてひらがなに変換する
+- AI・DJ・SNS・TVなどのアルファベット略語はそのまま使う
 - 笑・！・？・（笑）などの記号は使わない
 
 【出力形式のみ】
@@ -352,8 +378,7 @@ function startTimer(seconds) {
 }
 
 function stopTimer() {
-  clearInterval(timerInterval);
-  timerInterval = null;
+  clearInterval(timerInterval); timerInterval = null;
   document.getElementById('timerBox').classList.remove('visible');
 }
 
@@ -391,16 +416,17 @@ function setStatus(msg, isError) {
 
 function setMode(mode, data) {
   const badge = document.getElementById('modeBadge');
-  document.querySelectorAll('.bar').forEach(b => b.classList.remove('active','cm'));
+  const bars = [...document.querySelectorAll('.bar')];
+  bars.forEach(b => b.classList.remove('active','cm'));
   if (mode === 'talk') {
     badge.textContent = `🎙️ ${DJS[data.keyA].emoji}${DJS[data.keyA].name} × ${DJS[data.keyB].emoji}${DJS[data.keyB].name}`;
     badge.className = 'mode-badge mode-talk';
-    document.querySelectorAll('.bar').forEach(b => b.classList.add('active'));
+    bars.forEach(b => b.classList.add('active'));
     document.getElementById('currentTheme').textContent = '📌 ' + data.theme;
   } else if (mode === 'cm') {
     badge.textContent = '📺 CM中';
     badge.className = 'mode-badge mode-cm';
-    document.querySelectorAll('.bar').forEach(b => b.classList.add('active','cm'));
+    bars.forEach(b => b.classList.add('active','cm'));
     document.getElementById('currentTheme').textContent = '次の話題を準備中...';
   } else {
     badge.textContent = '⏳ 準備中';
@@ -415,7 +441,7 @@ function pickDJs() {
 
 // ===== メインループ =====
 async function radioLoop() {
-  setMode('loading', {});
+  setMode('loading', null);
   document.getElementById('currentTheme').textContent = 'まもなく放送開始...';
   showLoading(true);
 
@@ -430,12 +456,9 @@ async function radioLoop() {
     setMode('talk', current);
     startBGM();
 
-    // セリフ数×平均5秒でトーク時間を推定、終了3分前を締め切りに
     const deadlineSec = Math.max(60, current.lines.length * 5 - 180);
     let nextTheme = null;
     let nextPromise = null;
-
-    // タイマーIDをループ外で管理してスコープ問題を解消
     const timers = { theme: null, deadline: null };
 
     timers.theme = setTimeout(async () => {
@@ -463,11 +486,9 @@ async function radioLoop() {
     clearTimeout(timers.theme); clearTimeout(timers.deadline);
     if (!isRunning) return;
 
-    // CMパート
     stopBGM(); stopTimer(); hideLetterBox();
-    setMode('cm', {});
+    setMode('cm', null);
 
-    // 台本がまだなければフォールバック生成
     if (!nextPromise) {
       if (!nextTheme) nextTheme = await fetchTheme();
       const [keyA, keyB] = pickDJs();
@@ -476,25 +497,35 @@ async function radioLoop() {
         .catch(() => fetchScript(nextTheme, keyA, keyB, null));
     }
 
+    // 次番組予告（台本が準備できていれば）
+    let next = null;
+    try { next = await Promise.race([nextPromise, wait(500).then(() => null)]); } catch(e) {}
+    if (next) {
+      await speak(`このあとは${DJS[next.keyA].name}と${DJS[next.keyB].name}がお送りします。テーマは「${next.theme}」です。お楽しみに。`, current.keyA);
+      await wait(200);
+    }
+
     const cmText = await fetchCM().catch(() => 'AIラジオをお聴きいただきありがとうございます。');
-    await speak('それではCMです。', current.keyA);
+    await speak('それではCMです。', current.keyB);
     await wait(150);
     await speak(cmText, null);
     await wait(300);
-    await speak('以上CMでした。放送に戻ります。', current.keyB);
+    await speak('以上CMでした。放送に戻ります。', current.keyA);
     await wait(300);
     if (!isRunning) return;
 
     // 台本を待つ（間に合わなければCM延長）
     let resolved = false;
-    nextPromise.then(() => { resolved = true; });
-    await wait(300);
-    if (!resolved) {
-      showLoading(true);
-      await speak('ただいま次の番組を準備中です。もうしばらくお待ちください。', null);
+    if (next) { resolved = true; current = next; }
+    else {
+      nextPromise.then(() => { resolved = true; });
+      await wait(300);
+      if (!resolved) {
+        showLoading(true);
+        await speak('ただいま次の番組を準備中です。もうしばらくお待ちください。', null);
+      }
+      try { current = await nextPromise; } catch(e) { setStatus('エラー: ' + e.message, true); stopRadio(); return; }
     }
-
-    try { current = await nextPromise; } catch(e) { setStatus('エラー: ' + e.message, true); stopRadio(); return; }
     showLoading(false);
   }
 }
@@ -510,6 +541,7 @@ async function startRadio() {
       document.getElementById('keyInputArea').style.display = 'none';
     }
   } catch(e) {}
+  radioName = document.getElementById('radioName').value.trim() || '匿名リスナー';
   isRunning = true;
   document.getElementById('startBtn').disabled = true;
   document.getElementById('nowPlaying').classList.add('visible');
@@ -526,7 +558,6 @@ function stopRadio() {
   setStatus('放送を終了しました', false);
 }
 
-// 画面オフ防止
 async function requestWakeLock() {
   try {
     if ('wakeLock' in navigator) {
