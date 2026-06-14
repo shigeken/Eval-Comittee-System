@@ -420,6 +420,7 @@ let synth = window.speechSynthesis;
 let voices = [];
 let audioCtx = null;
 let bgmNodes = [];
+let bgmPaused = false;
 let nextScript = null;
 let nextCm = null;
 
@@ -464,35 +465,66 @@ function setStatus(msg, isError) {
   el.className = 'status' + (isError ? ' error' : '');
 }
 
-// ===== BGM（Web Audio APIで生成）=====
+// ===== BGM（Web Audio APIで生成・パターン切り替え）=====
+// パターン定義：各パターンは音階と和音の組み合わせ
+const BGM_PATTERNS = [
+  { // 0: ゆったりジャズ風
+    notes: [261.6, 311.1, 369.9, 415.3, 466.2],
+    type: 'sine', interval: 0.9, vol: 0.035
+  },
+  { // 1: 明るいポップ風
+    notes: [329.6, 392.0, 440.0, 523.2, 587.3],
+    type: 'triangle', interval: 0.6, vol: 0.03
+  },
+  { // 2: 落ち着いたアンビエント
+    notes: [220.0, 246.9, 277.2, 329.6, 369.9],
+    type: 'sine', interval: 1.2, vol: 0.04
+  },
+  { // 3: テンポよいリズミカル
+    notes: [349.2, 392.0, 440.0, 493.8, 523.2],
+    type: 'triangle', interval: 0.5, vol: 0.03
+  },
+  { // 4: 夜のバラード風
+    notes: [196.0, 220.0, 261.6, 293.6, 329.6],
+    type: 'sine', interval: 1.0, vol: 0.035
+  }
+];
+
+let lastBgmPattern = -1;
+let bgmLoopTimer = null;
+
 function startBGM() {
   try {
     audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-    playBGMLoop();
+    // 前回と違うパターンを選ぶ
+    let idx;
+    do { idx = Math.floor(Math.random() * BGM_PATTERNS.length); }
+    while (idx === lastBgmPattern);
+    lastBgmPattern = idx;
+    playBGMLoop(BGM_PATTERNS[idx]);
   } catch(e) { console.log('BGM error:', e); }
 }
 
-function playBGMLoop() {
-  if (!isRunning || !audioCtx) return;
+function playBGMLoop(pattern) {
+  if (!isRunning || !audioCtx || bgmPaused) return;
 
-  // シンプルなアンビエントBGM
-  const notes = [261.6, 293.6, 329.6, 349.2, 392.0, 440.0, 493.8];
   const now = audioCtx.currentTime;
+  const count = 10;
 
-  for (let i = 0; i < 8; i++) {
+  for (let i = 0; i < count; i++) {
     const osc = audioCtx.createOscillator();
     const gain = audioCtx.createGain();
     osc.connect(gain);
     gain.connect(audioCtx.destination);
 
-    const note = notes[Math.floor(Math.random() * notes.length)];
+    const note = pattern.notes[Math.floor(Math.random() * pattern.notes.length)];
     osc.frequency.value = note * (Math.random() > 0.5 ? 1 : 0.5);
-    osc.type = 'sine';
+    osc.type = pattern.type;
 
-    const start = now + i * 0.8;
-    const dur = 1.5;
+    const start = now + i * pattern.interval;
+    const dur = pattern.interval * 1.5;
     gain.gain.setValueAtTime(0, start);
-    gain.gain.linearRampToValueAtTime(0.04, start + 0.3);
+    gain.gain.linearRampToValueAtTime(pattern.vol, start + 0.3);
     gain.gain.linearRampToValueAtTime(0, start + dur);
 
     osc.start(start);
@@ -500,15 +532,36 @@ function playBGMLoop() {
     bgmNodes.push(osc);
   }
 
-  setTimeout(() => {
-    if (isRunning) playBGMLoop();
-  }, 6000);
+  const loopMs = count * pattern.interval * 1000;
+  bgmLoopTimer = setTimeout(() => {
+    if (isRunning && !bgmPaused) playBGMLoop(pattern);
+  }, loopMs - 500);
+}
+
+function pauseBGM() {
+  bgmPaused = true;
+  if (bgmLoopTimer) { clearTimeout(bgmLoopTimer); bgmLoopTimer = null; }
+  bgmNodes.forEach(n => { try { n.stop(); } catch(e){} });
+  bgmNodes = [];
+}
+
+function resumeBGM() {
+  if (!audioCtx) return;
+  bgmPaused = false;
+  // 前回と違うパターンを選ぶ
+  let idx;
+  do { idx = Math.floor(Math.random() * BGM_PATTERNS.length); }
+  while (idx === lastBgmPattern);
+  lastBgmPattern = idx;
+  playBGMLoop(BGM_PATTERNS[idx]);
 }
 
 function stopBGM() {
+  if (bgmLoopTimer) { clearTimeout(bgmLoopTimer); bgmLoopTimer = null; }
   bgmNodes.forEach(n => { try { n.stop(); } catch(e){} });
   bgmNodes = [];
   if (audioCtx) { audioCtx.close(); audioCtx = null; }
+  bgmPaused = false;
 }
 
 // ===== AI台本生成 =====
@@ -523,9 +576,10 @@ DJ B「${DJS.b.name}」: 冷静で知識豊富。ツッコミ担当。
 テーマ：${theme}
 
 【ルール】
-- 全部で8〜10回のやり取り
-- 各セリフは1〜2文
-- 挨拶から始まりテーマで盛り上がり締めで終わる
+- 全部で40〜50回のやり取りをする（約15分分）
+- 各セリフは1〜3文程度
+- 挨拶から始まり、テーマを深掘りしながら盛り上がり、脱線もしつつ、最後は締めの言葉で終わる
+- 途中で話題が自然に広がっても良い
 
 【出力形式】この形式のみ：
 A:セリフ
@@ -684,33 +738,36 @@ async function radioLoop() {
     // --- トークパート ---
     setMode('talk', current.theme);
     renderChat(current.lines);
+    resumeBGM(); // トーク開始時にBGM再開
 
-    // 裏でCMと次の台本を並行取得
-    const [cmText, nextScriptData] = await Promise.all([
-      fetchCM(),
-      fetchScript(randomTheme())
-    ]);
+    // 会話を順番に読み上げながら、裏でCMと次の台本を準備
+    // 最初に並行でフェッチ開始
+    const cmPromise = fetchCM();
+    const nextPromise = fetchScript(randomTheme());
 
-    // 会話を順番に読み上げ
     for (let i = 0; i < current.lines.length; i++) {
       if (!isRunning) return;
       highlight(i);
       await speak(current.lines[i].text, current.lines[i].dj);
-      await wait(250);
+      await wait(200);
     }
 
     if (!isRunning) return;
 
+    // CM・次台本の取得完了を待つ
+    const [cmText, nextScriptData] = await Promise.all([cmPromise, nextPromise]);
+
     // --- CMパート ---
+    pauseBGM(); // CM中はBGM停止
     setMode('cm', '');
     document.getElementById('cmBox').textContent = cmText;
 
     await speak('それではCMです。', 'a');
     await wait(200);
     await speak(cmText, null);
-    await wait(500);
-    await speak('以上、CMでした！それでは放送に戻ります。', 'b');
-    await wait(500);
+    await wait(400);
+    await speak('以上CMでした。それでは放送に戻ります！', 'b');
+    await wait(400);
 
     if (!isRunning) return;
 
@@ -721,52 +778,4 @@ async function radioLoop() {
 // ===== 開始・終了 =====
 async function startRadio() {
   const apiKey = getApiKey();
-  if (!apiKey) { setStatus('APIキーを入力してください', true); return; }
-
-  // APIキー保存
-  try {
-    if (document.getElementById('saveKey')?.checked) {
-      localStorage.setItem('ai_radio_key', apiKey);
-      document.getElementById('keySavedBanner').style.display = 'flex';
-      document.getElementById('keyInputArea').style.display = 'none';
-    }
-  } catch(e) {}
-
-  isRunning = true;
-  document.getElementById('startBtn').disabled = true;
-  document.getElementById('nowPlaying').classList.add('visible');
-
-  startBGM();
-  await radioLoop();
-}
-
-function stopRadio() {
-  isRunning = false;
-  synth.cancel();
-  stopBGM();
-  document.getElementById('nowPlaying').classList.remove('visible');
-  document.getElementById('startBtn').disabled = false;
-  document.getElementById('chatLog').style.display = 'flex';
-  document.getElementById('cmBox').classList.remove('visible');
-  setStatus('放送を終了しました', false);
-}
-
-// 画面をオフにしない
-async function requestWakeLock() {
-  try {
-    if ('wakeLock' in navigator) {
-      const lock = await navigator.wakeLock.request('screen');
-      document.addEventListener('visibilitychange', async () => {
-        if (document.visibilityState === 'visible') {
-          await navigator.wakeLock.request('screen');
-        }
-      });
-    }
-  } catch(e) { console.log('WakeLock:', e); }
-}
-requestWakeLock();
-  
-loadKey();
-</script>
-</body>
-</html>
+  if (!apiKey
