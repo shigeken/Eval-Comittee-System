@@ -127,6 +127,29 @@
     background: rgba(255,77,109,0.1);
   }
 
+  /* APIキー保存済みバナー */
+  .key-saved {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: rgba(123,97,255,0.1);
+    border: 1px solid rgba(123,97,255,0.3);
+    border-radius: 10px;
+    padding: 10px 14px;
+    font-size: 13px;
+    color: var(--accent2);
+  }
+
+  .key-saved button {
+    background: transparent;
+    border: none;
+    color: var(--muted);
+    cursor: pointer;
+    font-size: 12px;
+    padding: 0;
+    text-decoration: underline;
+  }
+
   /* パーソナリティ */
   .dj-cards {
     display: grid;
@@ -376,9 +399,19 @@
 
 <!-- 入力カード -->
 <div class="card">
-  <div class="form-group">
+  <div id="apiKeyGroup">
     <div class="section-label">🔑 API キー</div>
-    <input type="password" id="apiKey" placeholder="sk-ant-api..." autocomplete="off">
+    <div id="keySavedBanner" class="key-saved" style="display:none">
+      <span>✅ APIキー保存済み</span>
+      <button onclick="clearKey()">削除して再入力</button>
+    </div>
+    <div id="keyInputArea">
+      <input type="password" id="apiKey" placeholder="sk-ant-api..." autocomplete="off">
+      <div style="margin-top:8px;display:flex;gap:8px;align-items:center;">
+        <input type="checkbox" id="saveKey" checked style="width:auto;padding:0;accent-color:var(--accent2)">
+        <label for="saveKey" style="font-size:12px;color:var(--muted);cursor:pointer">このデバイスに保存する</label>
+      </div>
+    </div>
   </div>
 
   <hr class="divider">
@@ -451,6 +484,32 @@ if (speechSynthesis.onvoiceschanged !== undefined) {
   speechSynthesis.onvoiceschanged = loadVoices;
 }
 
+// APIキー保存
+function loadKey() {
+  try {
+    const saved = localStorage.getItem('ai_radio_key');
+    if (saved) {
+      document.getElementById('keySavedBanner').style.display = 'flex';
+      document.getElementById('keyInputArea').style.display = 'none';
+    }
+  } catch(e) {}
+}
+
+function clearKey() {
+  try { localStorage.removeItem('ai_radio_key'); } catch(e) {}
+  document.getElementById('keySavedBanner').style.display = 'none';
+  document.getElementById('keyInputArea').style.display = 'block';
+  document.getElementById('apiKey').value = '';
+}
+
+function getApiKey() {
+  try {
+    const saved = localStorage.getItem('ai_radio_key');
+    if (saved) return saved;
+  } catch(e) {}
+  return document.getElementById('apiKey').value.trim();
+}
+
 function setTheme(text) {
   document.getElementById('theme').value = text;
   document.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
@@ -464,10 +523,20 @@ function setStatus(msg, isError) {
 }
 
 async function generate() {
-  const apiKey = document.getElementById('apiKey').value.trim();
+  const apiKey = getApiKey();
   const theme = document.getElementById('theme').value.trim();
 
   if (!apiKey) { setStatus('APIキーを入力してください', true); return; }
+
+  // 保存チェック
+  try {
+    const shouldSave = document.getElementById('saveKey');
+    if (shouldSave && shouldSave.checked) {
+      localStorage.setItem('ai_radio_key', apiKey);
+      document.getElementById('keySavedBanner').style.display = 'flex';
+      document.getElementById('keyInputArea').style.display = 'none';
+    }
+  } catch(e) {}
   if (!theme) { setStatus('テーマを入力してください', true); return; }
 
   const btn = document.getElementById('generateBtn');
@@ -634,6 +703,7 @@ function setPlaying(playing) {
     bars.forEach(b => b.classList.remove('playing'));
   }
 }
+loadKey();
 </script>
 </body>
 </html>
