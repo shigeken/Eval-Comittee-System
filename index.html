@@ -60,10 +60,11 @@
   .bar:nth-child(7){animation-delay:.2s}.bar:nth-child(8){animation-delay:.1s}
   .bar:nth-child(9){animation-delay:0s}
   .mode-badge{display:inline-block;border-radius:20px;font-size:12px;font-weight:700;
-    padding:4px 12px;margin-bottom:12px;letter-spacing:1px}
+    padding:4px 12px;margin-bottom:6px;letter-spacing:1px}
   .mode-talk{background:rgba(255,77,109,.2);color:var(--accent)}
   .mode-cm{background:rgba(255,215,0,.2);color:#ffd700}
   .mode-loading{background:rgba(123,97,255,.2);color:var(--accent2)}
+  .show-name{font-size:13px;color:var(--muted);margin-bottom:10px;font-family:'Share Tech Mono',monospace}
   .current-theme{font-size:15px;font-weight:700;margin-bottom:16px;color:var(--text)}
   .loading-indicator{display:none;align-items:center;justify-content:center;gap:10px;
     margin-bottom:16px;font-family:'Share Tech Mono',monospace;font-size:12px;color:var(--accent2)}
@@ -82,8 +83,8 @@
   .letter-box.visible{display:block}
   .letter-title{font-size:12px;font-weight:700;color:var(--accent2);margin-bottom:10px;
     font-family:'Share Tech Mono',monospace;letter-spacing:2px}
-  .next-theme-label{font-size:14px;font-weight:700;color:var(--text);margin-bottom:12px;
-    padding:10px 12px;background:rgba(123,97,255,.1);border-radius:8px}
+  .next-info{font-size:14px;font-weight:700;color:var(--text);margin-bottom:12px;
+    padding:10px 12px;background:rgba(123,97,255,.1);border-radius:8px;line-height:1.6}
   .letter-sent{text-align:center;color:var(--accent2);font-size:13px;padding:8px 0;display:none}
   .btn-send{width:100%;border:none;border-radius:10px;color:#fff;cursor:pointer;
     font-family:'Zen Kaku Gothic New',sans-serif;font-size:14px;font-weight:700;
@@ -136,6 +137,7 @@
     <div class="bar"></div><div class="bar"></div><div class="bar"></div>
   </div>
   <div class="mode-badge mode-loading" id="modeBadge">⏳ 準備中</div>
+  <div class="show-name" id="showName"></div>
   <div class="current-theme" id="currentTheme"></div>
   <div class="loading-indicator" id="loadingIndicator">
     <span>台本生成中</span>
@@ -143,9 +145,9 @@
   </div>
   <div class="timer-box" id="timerBox"></div>
   <div class="letter-box" id="letterBox">
-    <div class="letter-title">📬 次のテーマへのお便り</div>
-    <div class="next-theme-label" id="nextThemeLabel"></div>
-    <textarea id="letterInput" class="ti" placeholder="このテーマについて一言どうぞ..."></textarea>
+    <div class="letter-title">📬 次の番組へのお便り</div>
+    <div class="next-info" id="nextInfo"></div>
+    <textarea id="letterInput" class="ti" placeholder="お便りを送る..."></textarea>
     <button class="btn-send" id="sendBtn" onclick="sendLetter()">送信する</button>
     <div class="letter-sent" id="letterSent">✅ お便りを受け付けました！次の放送でDJが読みます</div>
   </div>
@@ -157,12 +159,28 @@
 </div>
 
 <script>
+// ===== DJ定義 =====
 const DJS = {
   a: { name:'ハル',     emoji:'😄', pitch:1.5,  rate:1.1,  desc:'24歳、神奈川出身のカフェ店員（休日はラジオDJ）。テンション高めでポジティブ、天真爛漫。「それ最高じゃないですか」「えーほんとに」が口癖。タメ口気味で語尾が上がる。インスタ映えスポット巡りや韓国ドラマが好き。数字と難しい話と朝が苦手。' },
-  b: { name:'ソラ',     emoji:'🤓', pitch:0.8,  rate:0.9,  desc:'31歳、京都出身のITエンジニア（副業でラジオDJ）。冷静で知識豊富、少し皮肉屋。「それは違くて」「実はですね」が口癖。丁寧語ベースでたまに早口、ツッコミが鋭い。読書やプログラミングや将棋が好き。感情論と体育会系ノリが苦手。' },
+  b: { name:'ソラ',     emoji:'🤓', pitch:0.8,  rate:0.9,  desc:'43歳、京都出身のITエンジニア中堅社員（副業でラジオDJ）。冷静で知識豊富、少し皮肉屋。「それは違くて」「実はですね」が口癖。丁寧語ベースでたまに早口、ツッコミが鋭い。読書やプログラミングや将棋が好き。感情論と体育会系ノリが苦手。' },
   c: { name:'ナナ',     emoji:'😎', pitch:1.9,  rate:1.15, desc:'17歳、大阪出身の高校生（放課後にラジオDJ見習い）。ギャル系で自由奔放、空気を読まない天才。「えぇ〜マジで」「それってバズりそう」「しか勝たん」が口癖。ギャル語混じりでテンションが急に変わり話が脱線しまくる。TikTokやネイルやフェスが好き。ルールと時間を守ることと難しい漢字が苦手。' },
   d: { name:'ジョージ', emoji:'🧓', pitch:0.6,  rate:0.82, desc:'62歳、大阪出身で定年退職後にラジオDJに転身。昭和気質で頑固だが情に厚く世話焼き。「わしの若い頃はな」「それはアカン」「なんでやねん」が口癖。関西弁でたとえ話が長くてズレてる、若者言葉を間違って使う。競馬や演歌や銭湯や晩酌が好き。スマホとSNSと横文字と若者文化が苦手。なぜか最後は的を射たことを言う。' }
 };
+
+// ===== 番組定義（DJ組み合わせごと）=====
+const SHOWS = {
+  'ab': { name:'ラジオホリデー',   regular: { name:'布団の中から失礼します', desc:'30代会社員。毎回眠そうなコメントを送ってくる常連。' } },
+  'ac': { name:'キラキラFM',       regular: { name:'地元のギャルより',       desc:'ナナに憧れる中学生。トレンドの報告をしてくる常連。' } },
+  'ad': { name:'朝どれラジオ',     regular: { name:'カフェの常連おじさん',   desc:'ハルの職場の常連客。毎回注文を報告してくる常連。' } },
+  'bc': { name:'ギークナイト',     regular: { name:'プログラミング勉強中',   desc:'文系大学生。ソラに質問を投げかけてくる常連。' } },
+  'bd': { name:'男の隠れ家',       regular: { name:'競馬場帰りのサラリーマン', desc:'ジョージと馬の話をしたがる常連。' } },
+  'cd': { name:'世代間ラジオ',     regular: { name:'ジョージのことが心配なお嫁さん', desc:'ジョージの昭和発言にツッコミを入れてくる常連。' } }
+};
+
+function getShow(keyA, keyB) {
+  const key = [keyA, keyB].sort().join('');
+  return SHOWS[key] || { name:'AIラジオ', regular: { name:'常連リスナー', desc:'いつも聴いてくれている常連。' } };
+}
 
 const BGM_PATTERNS = [
   { notes:[261.6,311.1,369.9,415.3], type:'sine',     interval:1.0, vol:0.03  },
@@ -172,8 +190,14 @@ const BGM_PATTERNS = [
   { notes:[196.0,220.0,261.6,293.6], type:'sine',     interval:1.1, vol:0.03  }
 ];
 
-const FAKE_NAMES = ['たけし','はなこ','ゆうき','さくら','けんじ','みお','りょう','あやか'];
+const THEME_GENRES = [
+  '食べ物・グルメ','旅行・観光','恋愛・人間関係','スポーツ・健康',
+  '音楽・エンタメ','お金・生活','自然・動物','歴史・文化',
+  '家族・子育て','趣味・ホビー','季節・行事','学校・仕事',
+  'ファッション・美容','乗り物・移動','住まい・インテリア'
+];
 
+// ===== 状態 =====
 let isRunning = false;
 let usedThemes = [];
 let pendingLetter = null;
@@ -184,6 +208,10 @@ let audioCtx = null;
 let bgmTimer = null;
 let bgmOn = false;
 let lastBgmIdx = -1;
+let lastGenreIdx = -1;
+let prevDJs = null;
+// 番組ごとの前回トーク要約を保存
+const showMemory = {};
 let synth = window.speechSynthesis;
 let voices = [];
 
@@ -271,20 +299,21 @@ async function callAPI(prompt, maxTokens) {
   return (await res.json()).content[0].text.trim();
 }
 
-// ===== コンテンツ生成 =====
-const THEME_GENRES = [
-  '食べ物・グルメ','旅行・観光','恋愛・人間関係','スポーツ・健康',
-  '音楽・エンタメ','お金・生活','自然・動物','歴史・文化',
-  '家族・子育て','趣味・ホビー','季節・行事','学校・仕事',
-  'ファッション・美容','乗り物・移動','住まい・インテリア'
-];
-let lastGenreIdx = -1;
+// ===== 現在の季節・時間を取得 =====
+function getNowContext() {
+  const now = new Date();
+  const month = now.getMonth() + 1;
+  const hour = now.getHours();
+  const season = month >= 3 && month <= 5 ? '春' : month >= 6 && month <= 8 ? '夏' : month >= 9 && month <= 11 ? '秋' : '冬';
+  const timeOfDay = hour >= 5 && hour < 10 ? '朝' : hour >= 10 && hour < 17 ? '昼' : hour >= 17 && hour < 21 ? '夕方' : '夜';
+  return `現在は${season}の${timeOfDay}（${hour}時台）`;
+}
 
+// ===== テーマ生成 =====
 async function fetchTheme() {
   const useNews = Math.random() < 0.3;
   const exclusion = usedThemes.length > 0
     ? '\n\n【使用済みなので絶対に除外】\n' + usedThemes.map((t, i) => `${i+1}. ${t}`).join('\n') : '';
-
   let base;
   if (useNews) {
     base = 'あなたはラジオ番組のプロデューサーです。最近の日本や世界のニュース・トレンドを踏まえて、ラジオトークのテーマを1つ考えてください。AIやテクノロジー以外のジャンルで。';
@@ -294,60 +323,83 @@ async function fetchTheme() {
     lastGenreIdx = idx;
     base = `あなたはラジオ番組のプロデューサーです。「${THEME_GENRES[idx]}」に関連する面白いラジオトークのテーマを1つ考えてください。`;
   }
-
   const theme = await callAPI(base + 'テーマの文章のみ出力（例：○○について）。説明不要。' + exclusion, 100);
   usedThemes.push(theme);
   if (usedThemes.length > 20) usedThemes.shift();
   return theme;
 }
 
-// 必ず1人は前回と違うDJを選ぶ
-function pickDJs(prevKeys) {
+// ===== DJ選択（必ず1人変更）=====
+function pickDJs(prev) {
   const keys = Object.keys(DJS);
-  const shuffled = keys.sort(() => Math.random() - 0.5);
-  if (!prevKeys) return [shuffled[0], shuffled[1]];
-  // 前回と全員同じにならないよう、少なくとも1人は変更
+  let pair;
   let tries = 0;
-  let pair = [shuffled[0], shuffled[1]];
-  while (pair[0] === prevKeys[0] && pair[1] === prevKeys[1] && tries < 10) {
+  do {
     pair = keys.sort(() => Math.random() - 0.5).slice(0, 2);
     tries++;
-  }
+  } while (prev && pair[0] === prev[0] && pair[1] === prev[1] && tries < 10);
   return pair;
 }
 
-async function decideLetter(theme, userLetter) {
-  if (userLetter) {
+// ===== お便り決定 =====
+async function decideLetter(theme, keyA, keyB, userLetter) {
+  const show = getShow(keyA, keyB);
+  const roll = Math.random();
+
+  // 50%: 自分のお便り
+  if (roll < 0.5 && userLetter) {
     const judge = await callAPI(
       `以下のお便りはラジオトークのテーマ「${theme}」に関連していますか？「yes」か「no」のみ答えてください。\nお便り：「${userLetter}」`, 10
     ).catch(() => 'no');
-    if (judge.toLowerCase().includes('yes') && Math.random() < 0.5)
-      return { text: userLetter, name: radioName };
+    if (judge.toLowerCase().includes('yes')) return { text: userLetter, name: radioName };
   }
-  const fakeName = FAKE_NAMES[Math.floor(Math.random() * FAKE_NAMES.length)];
-  const fakeText = await callAPI(
-    `ラジオ番組のリスナー「${fakeName}」が「${theme}」というテーマに関して送ったお便りを1〜2文で作ってください。自然な話し言葉で。お便りの文章のみ出力。`, 150
+
+  // 30%: 常連リスナー
+  if (roll < 0.8) {
+    const text = await callAPI(
+      `ラジオ番組「${show.name}」の常連リスナー「${show.regular.name}」（${show.regular.desc}）が「${theme}」というテーマに関してお便りを送りました。そのキャラクターらしい1〜2文のお便りを作ってください。お便り文のみ出力。`, 150
+    ).catch(() => null);
+    if (text) return { text, name: show.regular.name };
+  }
+
+  // 20%: AIが生成する架空リスナー
+  const result = await callAPI(
+    `ラジオ番組のリスナーが「${theme}」というテーマにお便りを送りました。ラジオっぽいユニークなペンネームと1〜2文のお便りを作ってください。\n出力形式：\nペンネーム：〇〇\nお便り：〇〇`, 200
   ).catch(() => null);
-  return fakeText ? { text: fakeText, name: fakeName } : null;
+  if (result) {
+    const nameMatch = result.match(/ペンネーム[：:]\s*(.+)/);
+    const textMatch = result.match(/お便り[：:]\s*(.+)/);
+    if (nameMatch && textMatch) return { text: textMatch[1].trim(), name: nameMatch[1].trim() };
+  }
+  return null;
 }
 
+// ===== 台本生成 =====
 async function fetchScript(theme, keyA, keyB, userLetter) {
-  const letter = await decideLetter(theme, userLetter);
+  const show = getShow(keyA, keyB);
+  const key = [keyA, keyB].sort().join('');
+  const memory = showMemory[key] ? `\n\n【前回この番組で話した内容】\n${showMemory[key]}\n前回の内容に自然に触れることがあってもよい。` : '';
+  const nowCtx = getNowContext();
+  const letter = await decideLetter(theme, keyA, keyB, userLetter);
   const letterSection = letter
     ? `\n\n【リスナーからのお便り】\nラジオネーム「${letter.name}」さんからのお便りです。トークの途中で自然に読み上げて返答してください。\n「${letter.text}」` : '';
+
   const raw = await callAPI(
-    `あなたはラジオ番組の台本作家です。
+    `あなたはラジオ番組「${show.name}」の台本作家です。
 
 DJ A「${DJS[keyA].name}」: ${DJS[keyA].desc}
 DJ B「${DJS[keyB].name}」: ${DJS[keyB].desc}
 
-テーマ：${theme}${letterSection}
+テーマ：${theme}
+時間帯：${nowCtx}${memory}${letterSection}
 
 【ルール】
-- 40〜50回のやり取り（約15分分）
+- 30〜35回のやり取り（約10分分）
 - 各セリフ1〜3文、挨拶→深掘り→締めの流れ
 - キャラクターを活かした自然な会話
-- 必ず最後のセリフは「それではまた次回」「今日はここまで」など自然な締めの言葉で終わること
+- 番組名「${show.name}」を冒頭で紹介する
+- 時間帯や季節を自然に会話に組み込む
+- 必ず最後のセリフは自然な締めの言葉で終わること
 - 漢字はすべてひらがなに変換する
 - AI・DJ・SNS・TVなどのアルファベット略語はそのまま使う
 - 笑・！・？・（笑）などの記号は使わない
@@ -363,7 +415,17 @@ B:セリフ
     if (t.startsWith('A:')) lines.push({ djKey:keyA, text:t.slice(2).trim() });
     else if (t.startsWith('B:')) lines.push({ djKey:keyB, text:t.slice(2).trim() });
   });
-  return { theme, lines, keyA, keyB };
+  return { theme, lines, keyA, keyB, show };
+}
+
+// ===== トーク要約を保存 =====
+async function saveMemory(script) {
+  const key = [script.keyA, script.keyB].sort().join('');
+  const sample = script.lines.slice(0, 10).map(l => `${DJS[l.djKey].name}：${l.text}`).join('\n');
+  const summary = await callAPI(
+    `以下のラジオトークの内容を2〜3文で要約してください。\n${sample}\nテーマ：${script.theme}`, 200
+  ).catch(() => null);
+  if (summary) showMemory[key] = summary;
 }
 
 async function fetchCM() {
@@ -416,8 +478,9 @@ function stopTimer() {
 }
 
 // ===== お便り =====
-function showLetterBox(theme) {
-  document.getElementById('nextThemeLabel').textContent = '📌 次のテーマ：' + theme;
+function showLetterBox(nextScript) {
+  const info = `📻 ${nextScript.show.name}\n📌 ${nextScript.theme}`;
+  document.getElementById('nextInfo').textContent = info;
   document.getElementById('letterInput').value = '';
   document.getElementById('letterInput').disabled = false;
   document.getElementById('letterSent').style.display = 'none';
@@ -456,15 +519,17 @@ function setMode(mode, data) {
     badge.textContent = `🎙️ ${DJS[data.keyA].emoji}${DJS[data.keyA].name} × ${DJS[data.keyB].emoji}${DJS[data.keyB].name}`;
     badge.className = 'mode-badge mode-talk';
     bars.forEach(b => b.classList.add('active'));
+    document.getElementById('showName').textContent = data.show.name;
     document.getElementById('currentTheme').textContent = '📌 ' + data.theme;
   } else if (mode === 'cm') {
     badge.textContent = '📺 CM中';
     badge.className = 'mode-badge mode-cm';
     bars.forEach(b => b.classList.add('active','cm'));
-    document.getElementById('currentTheme').textContent = '次の話題を準備中...';
+    document.getElementById('currentTheme').textContent = '次の番組を準備中...';
   } else {
     badge.textContent = '⏳ 準備中';
     badge.className = 'mode-badge mode-loading';
+    document.getElementById('showName').textContent = '';
     document.getElementById('currentTheme').textContent = 'AIが台本を書いています...';
   }
 }
@@ -478,35 +543,38 @@ async function radioLoop() {
   await speak('AIラジオへようこそ。ただいま番組を準備中です。しばらくお待ちください。', null);
   await wait(200);
 
-  // テーマ2つを並行取得
-  const [firstTheme, nextTheme0] = await Promise.all([fetchTheme(), fetchTheme()]);
   const firstDJs = pickDJs(null);
+  const [firstTheme, nextTheme0] = await Promise.all([fetchTheme(), fetchTheme()]);
   let current = await fetchScript(firstTheme, firstDJs[0], firstDJs[1], null);
   let nextTheme = nextTheme0;
   showLoading(false);
-
-  let prevDJs = firstDJs;
+  prevDJs = firstDJs;
 
   while (isRunning) {
     setMode('talk', current);
     startBGM();
 
-    // トーク開始と同時にお便り受付・カウントダウン開始
-    showLetterBox(nextTheme);
-    const talkSec = Math.max(120, current.lines.length * 5 - 180);
-    startTimer(talkSec);
-
-    // 締め切りタイマー（トーク終了3分前）
+    // お便り受付5分間
+    const LETTER_WINDOW = 300;
     let nextPromise = null;
+
+    // 次の台本を事前に準備開始（お便り締め切り後に生成）
+    // まず次のDJを決めて、お便りボックスを表示
+    const nextDJs = pickDJs(prevDJs);
+    const nextScriptPlaceholder = { show: getShow(nextDJs[0], nextDJs[1]), theme: nextTheme };
+    showLetterBox(nextScriptPlaceholder);
+    startTimer(LETTER_WINDOW);
+
+    // 5分後に締め切り → 台本生成開始
     deadlineTimer = setTimeout(() => {
       if (!isRunning) return;
-      const nextDJs = pickDJs(prevDJs);
       const letter = pendingLetter; pendingLetter = null;
       nextPromise = fetchScript(nextTheme, nextDJs[0], nextDJs[1], letter)
         .catch(() => fetchScript(nextTheme, nextDJs[0], nextDJs[1], null));
-    }, talkSec * 1000);
+    }, LETTER_WINDOW * 1000);
 
-    // トーク読み上げ
+    // トーク読み上げ（並行してメモリ保存）
+    saveMemory(current).catch(() => {});
     for (let i = 0; i < current.lines.length; i++) {
       if (!isRunning) { stopTimer(); return; }
       await speak(current.lines[i].text, current.lines[i].djKey);
@@ -522,17 +590,16 @@ async function radioLoop() {
 
     // 台本がまだなければフォールバック
     if (!nextPromise) {
-      const nextDJs = pickDJs(prevDJs);
       const letter = pendingLetter; pendingLetter = null;
       nextPromise = fetchScript(nextTheme, nextDJs[0], nextDJs[1], letter)
         .catch(() => fetchScript(nextTheme, nextDJs[0], nextDJs[1], null));
     }
 
-    // 次番組予告（台本が準備できていれば）
+    // 次番組予告
     let next = null;
     try { next = await Promise.race([nextPromise, wait(500).then(() => null)]); } catch(e) {}
     if (next) {
-      await speak(`このあとは${DJS[next.keyA].name}と${DJS[next.keyB].name}がお送りします。テーマは「${next.theme}」です。お楽しみに。`, current.keyA);
+      await speak(`このあとは${next.show.name}、${DJS[next.keyA].name}と${DJS[next.keyB].name}がお送りします。テーマは「${next.theme}」です。お楽しみに。`, current.keyA);
       await wait(200);
     }
 
@@ -560,8 +627,6 @@ async function radioLoop() {
 
     prevDJs = [next.keyA, next.keyB];
     current = next;
-
-    // 次々回のテーマを先取り
     nextTheme = await fetchTheme().catch(() => fetchTheme());
   }
 }
@@ -586,7 +651,7 @@ async function startRadio() {
 
 function stopRadio() {
   isRunning = false;
-  usedThemes = []; pendingLetter = null;
+  usedThemes = []; pendingLetter = null; prevDJs = null; Object.keys(showMemory).forEach(k => delete showMemory[k]);
   synth.cancel(); stopBGM(); stopTimer(); showLoading(false); hideLetterBox();
   if (audioCtx) { try { audioCtx.close(); } catch(e){} audioCtx = null; }
   document.getElementById('nowPlaying').classList.remove('visible');
