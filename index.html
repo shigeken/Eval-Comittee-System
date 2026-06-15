@@ -573,17 +573,19 @@ async function radioLoop() {
     showLetterBox(curTheme);
     pendingLetter = null;
 
-    // パート1読み上げ（終了後にお便り締め切り→パート2生成）
+    // パート1読み上げ＆終了後にお便り締め切り→パート2生成
     let curLetter = null;
-    const part2Promise = speakLines(part1).then(async () => {
-      if (!isRunning) return null;
-      hideLetterBox();
-      curLetter = await decideLetter(curTheme, cur.keyA, cur.keyB);
-      pendingLetter = null;
-      return fetchPart(2, cur.show, cur.keyA, cur.keyB, curTheme, curLetter, null);
-    });
+    await speakLines(part1);
+    if (!isRunning) return;
+    hideLetterBox();
 
-    const part2 = await safeFetch(() => part2Promise);
+    // パート1終了と同時にdecideLetter＆part2を並行開始
+    const [letterResult, part2] = await Promise.all([
+      decideLetter(curTheme, cur.keyA, cur.keyB),
+      safeFetch(() => fetchPart(2, cur.show, cur.keyA, cur.keyB, curTheme, null, null))
+    ]);
+    curLetter = letterResult;
+    pendingLetter = null;
     if (!isRunning) return;
 
     // CM1
